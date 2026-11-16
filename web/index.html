@@ -18,6 +18,7 @@
       <div class="masthead-actions">
         <span id="updated" class="muted"></span>
         <button id="prices-btn" class="btn" type="button" aria-pressed="false" title="Live crypto prices">Crypto Prices</button>
+        <button id="stocks-btn" class="btn" type="button" aria-pressed="false" title="Live tech stock prices">Stock Prices</button>
         <button id="refresh" class="btn" type="button" title="Fetch the latest news from every source">Refresh</button>
         <button id="theme" class="btn icon" type="button" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
       </div>
@@ -48,8 +49,8 @@
   <main id="list" class="list" aria-live="polite"></main>
   <section id="prices" class="prices" hidden>
     <div id="prices-widget"></div>
-    <p class="muted prices-note">Live prices from <a href="https://www.tradingview.com/markets/cryptocurrencies/" target="_blank" rel="noopener">TradingView</a>,
-      in US dollars (Binance, against USDT). Change is since the start of the day (UTC).</p>
+    <p class="muted prices-note">Live prices from <a id="prices-source" href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView</a>,
+      <span id="prices-detail"></span></p>
   </section>
   <p id="empty" class="empty" hidden></p>
 

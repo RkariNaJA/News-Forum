@@ -249,14 +249,14 @@ function renderSources() {
 
 function renderCounts(counts) {
   document.querySelectorAll(".tabs button").forEach((b) => {
-    const badge = b.querySelector(".count");     // the Crypto Prices tab has none
+    const badge = b.querySelector(".count");     // every news tab has one
     const n = counts[b.dataset.view] || 0;
     if (badge) badge.textContent = n ? String(n) : "";
   });
 }
 
 async function load() {
-  if (state.view === PRICES_VIEW) {             // no stories on this tab: just keep the counts fresh
+  if (state.view in PRICE_PAGES) {              // no stories on a price page: just keep the counts fresh
     renderCounts((await api("/api/articles?view=today")).counts);
     return;
   }
@@ -319,34 +319,57 @@ async function showStatus() {
   $("#status-dialog").showModal();
 }
 
-// ---- Crypto Prices tab: TradingView's free "Market Quotes" widget (prices only, no chart) ----
-const PRICES_VIEW = "prices";
-const PRICE_SYMBOLS = [
-  ["BINANCE:BTCUSDT", "Bitcoin"], ["BINANCE:ETHUSDT", "Ethereum"], ["BINANCE:BNBUSDT", "BNB"],
-  ["BINANCE:SOLUSDT", "Solana"], ["BINANCE:XRPUSDT", "XRP"], ["BINANCE:DOGEUSDT", "Dogecoin"],
-  ["BINANCE:ADAUSDT", "Cardano"], ["BINANCE:TRXUSDT", "TRON"], ["BINANCE:LTCUSDT", "Litecoin"],
-  ["BINANCE:AVAXUSDT", "Avalanche"], ["BINANCE:LINKUSDT", "Chainlink"], ["BINANCE:DOTUSDT", "Polkadot"],
-  ["BINANCE:OPUSDT", "Optimism (OP)"], ["BINANCE:ARBUSDT", "Arbitrum (ARB)"],
-];
-let pricesTheme = null;
+// ---- Crypto Prices / Stock Prices: TradingView's free "Market Quotes" widget (prices only, no chart) ----
+// Each page is opened by its own top-right button, not a tab. Symbols are TradingView "EXCHANGE:TICKER" names.
+const PRICE_PAGES = {
+  prices: {
+    button: "#prices-btn", group: "Crypto",
+    link: "https://www.tradingview.com/markets/cryptocurrencies/",
+    detail: "in US dollars (Binance, against USDT). Change is since the start of the day (UTC).",
+    symbols: [
+      ["BINANCE:BTCUSDT", "Bitcoin"], ["BINANCE:ETHUSDT", "Ethereum"], ["BINANCE:BNBUSDT", "BNB"],
+      ["BINANCE:SOLUSDT", "Solana"], ["BINANCE:XRPUSDT", "XRP"], ["BINANCE:DOGEUSDT", "Dogecoin"],
+      ["BINANCE:ADAUSDT", "Cardano"], ["BINANCE:TRXUSDT", "TRON"], ["BINANCE:LTCUSDT", "Litecoin"],
+      ["BINANCE:AVAXUSDT", "Avalanche"], ["BINANCE:LINKUSDT", "Chainlink"], ["BINANCE:DOTUSDT", "Polkadot"],
+      ["BINANCE:OPUSDT", "Optimism (OP)"], ["BINANCE:ARBUSDT", "Arbitrum (ARB)"],
+    ],
+  },
+  stocks: {
+    button: "#stocks-btn", group: "Tech stocks",
+    link: "https://www.tradingview.com/markets/stocks-usa/",
+    detail: "Gold (XAU/USD, spot, per troy ounce) and US-listed tech stocks, in US dollars. A small D next to a price means it is delayed (free stock data is not real-time). Change is since the previous close; outside US trading hours the last price is shown.",
+    symbols: [
+      ["OANDA:XAUUSD", "Gold (XAU/USD)"],
+      ["NASDAQ:AAPL", "Apple"], ["NASDAQ:MSFT", "Microsoft"], ["NASDAQ:NVDA", "Nvidia"],
+      ["NASDAQ:GOOGL", "Alphabet (Google)"], ["NASDAQ:AMZN", "Amazon"], ["NASDAQ:META", "Meta"],
+      ["NASDAQ:TSLA", "Tesla"], ["NASDAQ:AVGO", "Broadcom"], ["NYSE:TSM", "TSMC"],
+      ["NASDAQ:AMD", "AMD"], ["NYSE:ORCL", "Oracle"], ["NASDAQ:NFLX", "Netflix"],
+      ["NASDAQ:ASML", "ASML"], ["NASDAQ:INTC", "Intel"],
+    ],
+  },
+};
+let pricesShown = null;   // "view/theme" of the widget on screen; it live-updates by itself
 
 function currentTheme() {
   return document.documentElement.dataset.theme ||
     (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 }
 
-function mountPrices() {
+function mountPrices(view) {
+  const page = PRICE_PAGES[view];
   const theme = currentTheme();
-  if (pricesTheme === theme) return;            // already showing, live-updating by itself
-  pricesTheme = theme;
+  if (pricesShown === `${view}/${theme}`) return;
+  pricesShown = `${view}/${theme}`;
+  $("#prices-source").href = page.link;
+  $("#prices-detail").textContent = page.detail;
   const box = el("div", "tradingview-widget-container");
   const script = document.createElement("script");
   script.src = "https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js";
   script.async = true;
   script.textContent = JSON.stringify({
-    width: "100%", height: 36 * PRICE_SYMBOLS.length + 110, locale: "en", colorTheme: theme, isTransparent: true,
+    width: "100%", height: 36 * page.symbols.length + 110, locale: "en", colorTheme: theme, isTransparent: true,
     showSymbolLogo: true,
-    symbolsGroups: [{ name: "Crypto", symbols: PRICE_SYMBOLS.map(([name, displayName]) => ({ name, displayName })) }],
+    symbolsGroups: [{ name: page.group, symbols: page.symbols.map(([name, displayName]) => ({ name, displayName })) }],
   });
   box.append(el("div", "tradingview-widget-container__widget"), script);
   $("#prices-widget").replaceChildren(box);
@@ -357,18 +380,18 @@ function selectTab(view) {
   store("view", view);
   document.querySelectorAll(".tabs button").forEach((b) =>
     b.setAttribute("aria-selected", String(b.dataset.view === view)));
-  const prices = view === PRICES_VIEW;
-  $("#prices-btn").setAttribute("aria-pressed", String(prices));   // top-right button, not a tab
+  const prices = view in PRICE_PAGES;
+  for (const [v, page] of Object.entries(PRICE_PAGES)) $(page.button).setAttribute("aria-pressed", String(v === view));
   for (const id of ["#list", ".toolbar"]) $(id).hidden = prices;
   if (prices) $("#empty").hidden = true;
   $("#prices").hidden = !prices;
-  if (prices) mountPrices();
+  if (prices) mountPrices(view);
   load();
 }
 
 function applyTheme(t) {
   if (t) document.documentElement.dataset.theme = t;
-  if (state.view === PRICES_VIEW) mountPrices();  // the widget has its own light/dark colours
+  if (state.view in PRICE_PAGES) mountPrices(state.view);  // the widget has its own light/dark colours
 }
 
 function init() {
@@ -380,7 +403,7 @@ function init() {
 
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => selectTab(b.dataset.view)));
   $("#refresh").addEventListener("click", () => refresh(true));
-  $("#prices-btn").addEventListener("click", () => selectTab(PRICES_VIEW));
+  for (const [v, page] of Object.entries(PRICE_PAGES)) $(page.button).addEventListener("click", () => selectTab(v));
   $("#theme").addEventListener("click", () => {
     const dark = matchMedia("(prefers-color-scheme: dark)").matches;
     const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
@@ -417,7 +440,7 @@ function init() {
   setInterval(showUpdated, 60000);
 
   const saved = store("view");
-  selectTab(["today", "saved", PRICES_VIEW, ...Object.keys(CATEGORY_LABEL)].includes(saved) ? saved : "today");
+  selectTab(["today", "saved", ...Object.keys(PRICE_PAGES), ...Object.keys(CATEGORY_LABEL)].includes(saved) ? saved : "today");
   showUpdated();
   refresh(false); // fetch only sources older than 30 minutes
 }

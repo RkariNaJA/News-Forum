@@ -68,9 +68,11 @@ def create_app(feeds_path: Path, db_path: Path,
             todo = stale_feeds(feeds, force)
             results = fetcher(todo)
             new, errors = 0, {}
+            # Feeds often carry stories older than the window; don't store them only to trim them again.
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=config.KEEP_DAYS)).isoformat()
             for f in todo:
                 articles, err = results.get(f["name"], ([], "No result"))
-                new += store.add_articles(articles)
+                new += store.add_articles([a for a in articles if a["published"] >= cutoff])
                 store.record_fetch(f, len(articles), err)
                 if err:
                     errors[f["name"]] = err

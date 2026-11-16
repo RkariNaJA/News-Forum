@@ -122,3 +122,19 @@ def test_status_and_index(setup):
     page = client.get("/")
     assert page.status_code == 200 and "News Forum" in page.text
     assert client.get("/static/app.js").status_code == 200
+
+
+def test_stories_older_than_the_window_are_skipped(tmp_path):
+    from datetime import timedelta
+    from news import config
+    feeds = tmp_path / "feeds.json"
+    feeds.write_text(json.dumps({"feeds": [{"name": "G", "url": "https://g/rss", "category": "world"}]}),
+                     encoding="utf-8")
+    now = datetime.now(timezone.utc)
+    arts = [{"link": f"https://g/{d}", "title": f"{d} days old", "summary": "", "source": "G", "category": "world",
+             "image": None, "published": (now - timedelta(days=d, minutes=1)).isoformat()}
+            for d in (0, config.KEEP_DAYS - 1, config.KEEP_DAYS, 10)]
+    client = TestClient(create_app(feeds, tmp_path / "news.db", fetcher=lambda todo: {"G": (arts, None)}))
+    assert client.post("/api/refresh").json()["new"] == 2
+    titles = [a["title"] for a in client.get("/api/articles?view=world").json()["articles"]]
+    assert titles == ["0 days old", f"{config.KEEP_DAYS - 1} days old"]

@@ -75,11 +75,13 @@ refetches everything (you lose read/saved marks).
      enclosure.
    - **author** (up to 120 characters), **tags** (up to 6, de-duplicated without regard to case) and
      **feed_text** (see §3) for the reader pop-up.
-6. `store.add_articles` does `INSERT OR IGNORE`, so a link that is already stored keeps its original
+6. Stories published more than `KEEP_DAYS` (3) days ago are dropped before storing, so an old story
+   still listed in a feed isn't added only to be trimmed again.
+   `store.add_articles` does `INSERT OR IGNORE`, so a link that is already stored keeps its original
    row, including its read/saved flags and first-seen date. If the stored row has no `feed_text`
    (it was saved before the pop-up existed), its author, tags and feed text are filled in.
 7. `store.record_fetch` writes the per-feed status. On error, `last_ok` keeps its previous value.
-8. `store.prune(KEEP_DAYS)` deletes **unsaved** articles published more than 30 days ago.
+8. `store.prune(KEEP_DAYS)` deletes **unsaved** articles published more than 3 days ago.
 9. The page shows any feed errors in a banner, then reloads the current tab.
 
 ## 3. Reader view (the pop-up)
@@ -92,7 +94,7 @@ Clicking a card anywhere except the headline link or its buttons calls `openRead
 2. `GET /api/articles/{id}/detail` returns the stored article (author, tags, full feed text) and the
    reader result.
 3. **Cache first.** `reader_cache` holds one row per article. A success is kept for good (until the
-   30-day trim removes the article). A failure is kept for `READER_RETRY` (6 h), so a blocked site
+   3-day trim removes the article). A failure is kept for `READER_RETRY` (6 h), so a blocked site
    isn't hit on every click. `?retry=true` (the pop-up's *Try again* link) refetches a cached
    failure.
 4. On a cache miss, [`reader.read_article`](../news/reader.py) runs:
@@ -170,7 +172,7 @@ All in [`news/config.py`](../news/config.py) unless noted.
 |---|---|---|
 | `HOST` / `PORT` | `127.0.0.1` / `8770` | Where uvicorn listens. Loopback only, so the LAN cannot reach it |
 | `STALE_MINUTES` | `30` | A feed is refetched on page open when its last fetch is older than this |
-| `KEEP_DAYS` | `30` | Unsaved articles older than this are deleted on every refresh |
+| `KEEP_DAYS` | `3` | Only stories from the last 3 days: older ones are skipped when fetched, and unsaved ones are deleted on every refresh |
 | `CATEGORIES` | world, business, markets, asia, tech | Allowed `category` values in `feeds.json`; also the tab names |
 | `FEEDS_PATH` / `DB_PATH` / `WEB_DIR` | `feeds.json`, `data/news.db`, `web/` | Relative to the project folder |
 | `TIMEOUT` (feeds.py) | `20.0` s | Per-request HTTP timeout |
@@ -242,14 +244,17 @@ Plain HTML/CSS/JS, no build step. [`web/app.js`](../web/app.js):
 - Shows day headings ("Today", "Yesterday", …) on every tab except **Today**.
 - Cards are focusable (`tabindex=0`) and open the reader on click or Enter (§3). The reader is a
   native `<dialog>`, full-screen below 560 px.
-- **Crypto Prices** (`view = "prices"`, page-only; the API has no such view). Opened by the
-  `#prices-btn` button at the top right (`aria-pressed` while open), not a tab. It hides the list and
-  toolbar and embeds TradingView's free *Market Quotes* widget
-  (`s3.tradingview.com/external-embedding/embed-widget-market-quotes.js`), which renders an iframe that
-  updates itself. TradingView has no public price API, so the widget is the supported way. The coins are
-  `PRICE_SYMBOLS` in `app.js`, as `EXCHANGE:PAIR` names (Binance USDT pairs). Check a new symbol on
-  tradingview.com first: `BINANCE:TONUSDT` showed "No data". The widget is rebuilt when the theme
-  changes, because its colours are fixed at creation. Opening the tab still refreshes the tab counts.
+- **Crypto Prices** and **Stock Prices** (`view = "prices"` / `"stocks"`, page-only; the API has no such
+  views). Each is opened by its own button at the top right (`#prices-btn`, `#stocks-btn`;
+  `aria-pressed` while open), not a tab. Both hide the list and toolbar and embed TradingView's free
+  *Market Quotes* widget (`s3.tradingview.com/external-embedding/embed-widget-market-quotes.js`), which
+  renders an iframe that updates itself. TradingView has no public price API, so the widget is the
+  supported way. Each page is an entry in `PRICE_PAGES` in `app.js`: its button, group name, note text
+  and `symbols` as `EXCHANGE:TICKER` names (crypto: Binance USDT pairs; stocks: `NASDAQ:`/`NYSE:`, with spot gold `OANDA:XAUUSD` first).
+  Check a new symbol on tradingview.com first: `BINANCE:TONUSDT` showed "No data". Stock prices are
+  delayed in the free widget (a small **D** after the price). The widget is rebuilt when the page or the
+  theme changes, because its colours are fixed at creation. Opening a price page still refreshes the
+  tab counts.
 
 [`web/style.css`](../web/style.css) defines colour tokens on `:root`, with a dark set applied by the
 ◐ toggle or by the OS setting. Fonts are Newsreader and Inter from Google Fonts, falling back to
@@ -267,7 +272,7 @@ Georgia and Segoe UI when offline.
   the list. Use *Source status* (page footer) to spot a feed that keeps failing.
 - **Thumbnails and fonts are loaded from the publishers and Google**, so those requests do leave
   your PC (the feed fetches do too, obviously). The Crypto Prices tab loads TradingView's widget
-  script and iframe, only while that tab is open.
+  script and iframe, only while a price page is open.
 - **The pop-up fetches the publisher's page from your PC**, the same as opening the article.
   Publishers change their layouts, so extraction can start missing on a site and then fall back to
   the feed text. If one source keeps failing, check it with *Try again*, then look at
@@ -354,3 +359,9 @@ News Forum/
 - **2026-11-16**: New **Crypto Prices** tab: TradingView's *Market Quotes* widget, prices only (no
   chart), 12 coins in USD. Then moved, at the user's request, from the tab bar to a **Crypto Prices**
   button at the top right, next to Refresh. Optimism (`BINANCE:OPUSDT`) and Arbitrum (`BINANCE:ARBUSDT`) added: 14 coins.
+- **2026-11-16**: New **Stock Prices** button next to Crypto Prices: the same price-only widget for 14
+  US-listed tech stocks. Both pages now share one `PRICE_PAGES` table in `app.js`. Gold
+  (`OANDA:XAUUSD`, live, not delayed) added as the first row of Stock Prices.
+- **2026-11-16**: News kept for 4 days instead of 30, at the user's request ("too much"). `KEEP_DAYS`
+  is 4, and the refresh skips stories older than that before storing. The first run removed 172
+  stories (749 → 577). Then lowered to 3 days, also at the user's request.

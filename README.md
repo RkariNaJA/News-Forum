@@ -38,7 +38,9 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 - **Same story, one row.** Links are normalised (tracking parameters such as `utm_*` and BBC's
   `at_*` are stripped) before they are stored, so a story carried by two BBC feeds shows once.
 - **It remembers you.** Read stories fade, unread counts sit on each tab, and starred stories stay
-  in **Saved** even after the 30-day clean-up removes everything else.
+  in **Saved** even after the clean-up removes everything else.
+- **Only the last 3 days.** Stories older than 3 days are skipped when feeds are fetched and removed
+  on every refresh, so the tabs stay short. Starred stories are never removed.
 - **A broken feed doesn't break the page.** Every source is fetched separately; if one is down you
   get a one-line notice naming it and the rest of the news as usual.
 - **Feeds without dates don't flood the top.** Nikkei Asia publishes no timestamps, so its stories
@@ -53,6 +55,7 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 | **Business** | BBC Business · CNBC · Guardian Business |
 | **Crypto & Investing** | CoinDesk · Cointelegraph · Decrypt · CNBC Markets · CNBC Investing · Guardian Money |
 | **Crypto Prices** (button, top right) | A live price table for 14 coins (Bitcoin, Ethereum, BNB, Solana, XRP… Optimism (OP), Arbitrum (ARB)) in US dollars: price, change, change %, open, high, low. No charts. It's TradingView's free *Market Quotes* widget, so this tab needs internet and loads from tradingview.com |
+| **Stock Prices** (button, top right) | The same price-only table for gold (XAU/USD, live) on top, then 14 US-listed tech stocks: Apple, Microsoft, Nvidia, Alphabet, Amazon, Meta, Tesla, Broadcom, TSMC, AMD, Oracle, Netflix, ASML, Intel. Free stock data from TradingView is delayed (marked with a small **D**); gold is not |
 | **Asia** | CNA · Nikkei Asia · Bangkok Post · The Diplomat · BBC Asia |
 | **Tech & Science** | BBC Tech · Ars Technica · The Verge · BBC Science |
 | **Saved** | Stories you starred, kept until you un-star them |
@@ -61,6 +64,11 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
   <img src="Pic/Screenshot%202026-11-16%20160319.png" alt="Crypto Prices view: a TradingView price table with value, change, change %, open, high, low and previous close for each coin" width="900">
 </p>
 <sub><b>Crypto Prices</b> (the dark button at the top right): live prices only, no charts. Taken before OP and ARB were added to the list.</sub>
+
+<p align="center">
+  <img src="Pic/Screenshot%202026-11-16%20161738.png" alt="Stock Prices view: gold (XAU/USD) on top, then Apple, Microsoft, Nvidia and other US tech stocks with value, change, open, high, low and previous close" width="900">
+</p>
+<sub><b>Stock Prices</b>: gold (XAU/USD) on top, then 14 US tech stocks. The small orange <b>D</b> marks delayed stock prices; gold is live.</sub>
 
 Each story is a card: section · source · time ago, the headline (opens the original article in a
 new tab and marks it read), the publisher's own short blurb, a thumbnail when the feed has one, and
@@ -124,11 +132,11 @@ To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a sec
 | File | What it does |
 |---|---|
 | [`news/feeds.py`](news/feeds.py) | Loads `feeds.json`, downloads feeds in parallel with httpx, parses RSS/Atom with feedparser, strips HTML, normalises links |
-| [`news/store.py`](news/store.py) | SQLite: articles (unique by link) and per-source fetch status; tab queries, search, read/saved flags, 30-day trim |
+| [`news/store.py`](news/store.py) | SQLite: articles (unique by link) and per-source fetch status; tab queries, search, read/saved flags, 3-day trim |
 | [`news/reader.py`](news/reader.py) | Reader view: fetches one article page (public web addresses only) and extracts the story as plain paragraphs with trafilatura |
 | [`news/highlights.py`](news/highlights.py) | Key sentences for the pop-up: sentences carrying the story's distinctive words (TF-IDF over all stored stories), without AI |
 | [`news/server.py`](news/server.py) | FastAPI app: `/api/refresh`, `/api/articles`, `/api/articles/{id}/detail`, `/api/status`, read/save endpoints, serves the page |
-| [`news/config.py`](news/config.py) | Port, paths, the 30-minute freshness window and 30-day retention |
+| [`news/config.py`](news/config.py) | Port, paths, the 30-minute freshness window and the 3-day window |
 | [`web/app.js`](web/app.js) | The page: tabs, cards, search, filters, theme. All feed text goes in via `textContent`, never `innerHTML` |
 | [`web/style.css`](web/style.css) | Newspaper look, light and dark palettes |
 | [`tests/`](tests/) | 55 pytest tests run against saved sample feeds and a sample article page, so they pass offline |

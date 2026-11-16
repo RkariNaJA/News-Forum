@@ -10,5 +10,5 @@ HOST = "127.0.0.1"
 PORT = 8770
 
 STALE_MINUTES = 30   # a feed is re-fetched on page open when older than this
-KEEP_DAYS = 30       # unsaved articles older than this are trimmed
+KEEP_DAYS = 3        # only stories from the last 3 days: older ones are skipped and trimmed (saved ones stay)
 CATEGORIES = ("world", "business", "markets", "asia", "tech")  # markets = Crypto & Investing tab
