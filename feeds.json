@@ -1,0 +1,29 @@
+{
+  "howToEdit": "Add or remove feeds here. category must be one of: world, business, markets (Crypto & Investing), asia, tech. Restart the app after editing.",
+  "feeds": [
+    {"name": "BBC World",         "category": "world",    "url": "https://feeds.bbci.co.uk/news/world/rss.xml"},
+    {"name": "Al Jazeera",        "category": "world",    "url": "https://www.aljazeera.com/xml/rss/all.xml"},
+    {"name": "DW",                "category": "world",    "url": "https://rss.dw.com/rdf/rss-en-world"},
+    {"name": "The Guardian",      "category": "world",    "url": "https://www.theguardian.com/world/rss"},
+    {"name": "NPR",               "category": "world",    "url": "https://feeds.npr.org/1004/rss.xml"},
+    {"name": "France 24",         "category": "world",    "url": "https://www.france24.com/en/rss"},
+    {"name": "BBC Business",      "category": "business", "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},
+    {"name": "CNBC",              "category": "business", "url": "https://www.cnbc.com/id/100727362/device/rss/rss.html"},
+    {"name": "Guardian Business", "category": "business", "url": "https://www.theguardian.com/uk/business/rss"},
+    {"name": "CoinDesk",          "category": "markets",  "url": "https://www.coindesk.com/arc/outboundfeeds/rss/"},
+    {"name": "Cointelegraph",     "category": "markets",  "url": "https://cointelegraph.com/rss"},
+    {"name": "Decrypt",           "category": "markets",  "url": "https://decrypt.co/feed"},
+    {"name": "CNBC Markets",      "category": "markets",  "url": "https://www.cnbc.com/id/20910258/device/rss/rss.html"},
+    {"name": "CNBC Investing",    "category": "markets",  "url": "https://www.cnbc.com/id/15839069/device/rss/rss.html"},
+    {"name": "Guardian Money",    "category": "markets",  "url": "https://www.theguardian.com/money/rss"},
+    {"name": "CNA",               "category": "asia",     "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6511"},
+    {"name": "Nikkei Asia",       "category": "asia",     "url": "https://asia.nikkei.com/rss/feed/nar"},
+    {"name": "Bangkok Post",      "category": "asia",     "url": "https://www.bangkokpost.com/rss/data/topstories.xml"},
+    {"name": "The Diplomat",      "category": "asia",     "url": "https://thediplomat.com/feed/"},
+    {"name": "BBC Asia",          "category": "asia",     "url": "https://feeds.bbci.co.uk/news/world/asia/rss.xml"},
+    {"name": "BBC Tech",          "category": "tech",     "url": "https://feeds.bbci.co.uk/news/technology/rss.xml"},
+    {"name": "Ars Technica",      "category": "tech",     "url": "https://feeds.arstechnica.com/arstechnica/index"},
+    {"name": "The Verge",         "category": "tech",     "url": "https://www.theverge.com/rss/index.xml"},
+    {"name": "BBC Science",       "category": "tech",     "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"}
+  ]
+}
