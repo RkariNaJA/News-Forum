@@ -316,7 +316,8 @@ Georgia and Segoe UI when offline.
   to see which.
 - **The price-row buttons assume TradingView's layout.** If TradingView changes the Market Quotes row
   height or header, clicks can land on the wrong row. The chart pop-up's title names the symbol, so this
-  shows at once; re-measure and update `QUOTE_ROW` in `prices.js`.
+  shows at once, and `pytest --live` (§9) checks it directly; re-measure and update `QUOTE_ROW` in
+  `prices.js`.
 - **Thumbnails and fonts are loaded from the publishers and Google**, so those requests do leave
   your PC (the feed fetches do too, obviously). The price pages load TradingView's widget script and
   iframe, and the chart pop-up loads a second one, only while they are open.
@@ -336,7 +337,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-57 tests, all offline:
+57 tests, all offline (plus 5 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -361,9 +362,28 @@ py -3.13 -m pytest -q
 
 Sample feeds and a sample article page (`article.html`) are in `tests/fixtures/`.
 
-There are no automated tests for the front end. The feed-health dot, keyboard shortcuts and day-chart
-pop-up were checked by hand in a browser on 2026-11-20, including the overlay buttons against every row
-of both price pages.
+### Live tests (`--live`)
+
+```bat
+py -3.13 -m pip install playwright          :: once; test-only, not in requirements.txt
+py -3.13 -m pytest --live -q tests/test_price_rows_live.py
+```
+
+[`test_price_rows_live.py`](../tests/test_price_rows_live.py) needs internet (TradingView) and drives
+Microsoft Edge through Playwright, falling back to Playwright's own Chromium if Edge won't start. It
+serves the real page on a free port with an empty feed list and a throwaway database, so it never
+touches `data/news.db` or the running app. Without `--live` the 5 tests show as skipped
+(`conftest.py` adds the switch and the `live` marker).
+
+- **Every row button on its own row**: Crypto Prices and Stock Prices, at 1280 px and 390 px wide. For
+  each button it reads which widget row is under the button's top, middle and bottom, and fails with
+  lines like `Gold (XAU/USD): at y=88 the widget shows 'Anthropic'` and a pointer to `QUOTE_ROW`.
+  Checked to fail by moving `QUOTE_ROW.top` from 52 to 70 px.
+- **A click opens the day chart, not a tab**: the right title, the chart iframe, no new browser tab,
+  and Esc closes and empties the pop-up.
+
+Run it after TradingView looks different, or now and then. The feed-health dot and keyboard shortcuts
+have no automated tests; they were checked by hand in a browser on 2026-11-20.
 
 ## 10. File tree
 
@@ -431,3 +451,5 @@ News Forum/
   TradingView's Advanced Chart widget) in a pop-up instead of a new TradingView tab.
 - **2026-11-20**: Full-text check of the AI feeds (§3). Ars Technica AI (0/3, site refuses the reader)
   replaced by The Decoder (3/3). Still 25 feeds.
+- **2026-11-20**: `pytest --live` runs a browser check of the price-row buttons against TradingView's
+  real widget (`tests/test_price_rows_live.py`, Playwright + Edge). A plain `pytest` skips it.

@@ -142,7 +142,7 @@ To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a sec
 | [`news/config.py`](news/config.py) | Port, paths, the 30-minute freshness window and the 3-day window |
 | [`web/app.js`](web/app.js) | The page: tabs, cards, search, filters, theme. All feed text goes in via `textContent`, never `innerHTML` |
 | [`web/style.css`](web/style.css) | Newspaper look, light and dark palettes |
-| [`tests/`](tests/) | 55 pytest tests run against saved sample feeds and a sample article page, so they pass offline |
+| [`tests/`](tests/) | 57 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
 
 ## Documentation
 
