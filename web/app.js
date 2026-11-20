@@ -53,6 +53,7 @@ function safeUrl(u) {
 
 function card(a) {
   const c = el("article", "card" + (a.is_read ? " read" : ""));
+  c.dataset.id = a.id;   // lets the keyboard shortcuts find a story's card again after a re-render
   const body = el("div", "card-body");
 
   const meta = el("div", "meta");
@@ -296,6 +297,7 @@ async function refresh(force) {
   } finally {
     btn.disabled = false; btn.textContent = "Refresh";
     showUpdated();
+    checkHealth();
     await load();
   }
 }
@@ -305,74 +307,41 @@ function showUpdated() {
   $("#updated").textContent = t ? `Updated ${timeAgo(t)}` : "";
 }
 
+// ---- feed health: a feed is a problem when its last fetch failed or brought back no stories ----
+function feedProblem(f) {
+  if (f.error) return f.last_ok ? `${f.error} (last worked ${timeAgo(f.last_ok)})` : f.error;
+  if (f.last_fetch && !f.last_count) return "Feed returned no stories";
+  return null;
+}
+
+let feedList = [];
+
+async function checkHealth() {
+  try { feedList = (await api("/api/status")).feeds; } catch (e) { console.error(e); return; }
+  $("#tagline").textContent = `International news from ${feedList.length} sources, gathered for you each day.`;
+  const bad = feedList.filter(feedProblem).length;
+  const h = $("#health");
+  h.hidden = false;
+  h.classList.toggle("bad", bad > 0);
+  h.textContent = bad ? `● ${bad} source${bad > 1 ? "s" : ""} down` : `● ${feedList.length} sources OK`;
+  h.title = bad ? "Some feeds failed on the last refresh. Click for details." : "Every feed worked on the last refresh";
+}
+
 async function showStatus() {
-  const { feeds } = await api("/api/status");
+  await checkHealth();
   const tb = $("#status-table tbody");
   tb.replaceChildren();
-  for (const f of feeds) {
-    const tr = el("tr");
-    const state_ = f.error ? el("td", "bad", f.error) : el("td", "ok", f.last_fetch ? "OK" : "Not fetched yet");
+  const rows = feedList.map((f) => ({ f, problem: feedProblem(f) }))
+    .sort((a, b) => Boolean(b.problem) - Boolean(a.problem));   // problems first, otherwise feeds.json order
+  for (const { f, problem } of rows) {
+    const tr = el("tr", problem ? "problem" : null);
+    const state_ = problem ? el("td", "bad", `● ${problem}`)
+      : el("td", f.last_fetch ? "ok" : "muted", f.last_fetch ? "● OK" : "Not fetched yet");
     tr.append(el("td", null, f.name), el("td", null, CATEGORY_LABEL[f.category]),
       el("td", null, f.last_fetch ? timeAgo(f.last_fetch) : "—"), el("td", null, String(f.last_count ?? 0)), state_);
     tb.append(tr);
   }
-  $("#status-dialog").showModal();
-}
-
-// ---- Crypto Prices / Stock Prices: TradingView's free "Market Quotes" widget (prices only, no chart) ----
-// Each page is opened by its own top-right button, not a tab. Symbols are TradingView "EXCHANGE:TICKER" names.
-const PRICE_PAGES = {
-  prices: {
-    button: "#prices-btn", group: "Crypto",
-    link: "https://www.tradingview.com/markets/cryptocurrencies/",
-    detail: "in US dollars (Binance, against USDT). Change is since the start of the day (UTC).",
-    symbols: [
-      ["BINANCE:BTCUSDT", "Bitcoin"], ["BINANCE:ETHUSDT", "Ethereum"], ["BINANCE:BNBUSDT", "BNB"],
-      ["BINANCE:SOLUSDT", "Solana"], ["BINANCE:XRPUSDT", "XRP"], ["BINANCE:DOGEUSDT", "Dogecoin"],
-      ["BINANCE:ADAUSDT", "Cardano"], ["BINANCE:TRXUSDT", "TRON"], ["BINANCE:LTCUSDT", "Litecoin"],
-      ["BINANCE:AVAXUSDT", "Avalanche"], ["BINANCE:LINKUSDT", "Chainlink"], ["BINANCE:DOTUSDT", "Polkadot"],
-      ["BINANCE:OPUSDT", "Optimism (OP)"], ["BINANCE:ARBUSDT", "Arbitrum (ARB)"],
-    ],
-  },
-  stocks: {
-    button: "#stocks-btn", group: "Tech stocks",
-    link: "https://www.tradingview.com/markets/stocks-usa/",
-    detail: "Gold (XAU/USD, spot, per troy ounce) and US-listed tech stocks, in US dollars. A small D next to a price means it is delayed (free stock data is not real-time). Change is since the previous close; outside US trading hours the last price is shown.",
-    symbols: [
-      ["OANDA:XAUUSD", "Gold (XAU/USD)"],
-      ["NASDAQ:AAPL", "Apple"], ["NASDAQ:MSFT", "Microsoft"], ["NASDAQ:NVDA", "Nvidia"],
-      ["NASDAQ:GOOGL", "Alphabet (Google)"], ["NASDAQ:AMZN", "Amazon"], ["NASDAQ:META", "Meta"],
-      ["NASDAQ:TSLA", "Tesla"], ["NASDAQ:AVGO", "Broadcom"], ["NYSE:TSM", "TSMC"],
-      ["NASDAQ:AMD", "AMD"], ["NYSE:ORCL", "Oracle"], ["NASDAQ:NFLX", "Netflix"],
-      ["NASDAQ:ASML", "ASML"], ["NASDAQ:INTC", "Intel"],
-    ],
-  },
-};
-let pricesShown = null;   // "view/theme" of the widget on screen; it live-updates by itself
-
-function currentTheme() {
-  return document.documentElement.dataset.theme ||
-    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-}
-
-function mountPrices(view) {
-  const page = PRICE_PAGES[view];
-  const theme = currentTheme();
-  if (pricesShown === `${view}/${theme}`) return;
-  pricesShown = `${view}/${theme}`;
-  $("#prices-source").href = page.link;
-  $("#prices-detail").textContent = page.detail;
-  const box = el("div", "tradingview-widget-container");
-  const script = document.createElement("script");
-  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-market-quotes.js";
-  script.async = true;
-  script.textContent = JSON.stringify({
-    width: "100%", height: 36 * page.symbols.length + 110, locale: "en", colorTheme: theme, isTransparent: true,
-    showSymbolLogo: true,
-    symbolsGroups: [{ name: page.group, symbols: page.symbols.map(([name, displayName]) => ({ name, displayName })) }],
-  });
-  box.append(el("div", "tradingview-widget-container__widget"), script);
-  $("#prices-widget").replaceChildren(box);
+  if (!$("#status-dialog").open) $("#status-dialog").showModal();
 }
 
 function selectTab(view) {
@@ -424,6 +393,7 @@ function init() {
     await load();
   });
   $("#show-status").addEventListener("click", showStatus);
+  $("#health").addEventListener("click", showStatus);
   $("#reader-close").addEventListener("click", closeReader);
   $("#reader").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeReader(); }); // backdrop
   $("#reader").addEventListener("cancel", () => { readerToken++; }); // Esc

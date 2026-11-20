@@ -1,6 +1,6 @@
 # News Forum
 
-**Turns 24 international news RSS feeds into one quiet, newspaper-style front page on your own PC.**
+**Turns 25 international news RSS feeds into one quiet, newspaper-style front page on your own PC.**
 
 <p>
   <img src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white" alt="Python 3.13">
@@ -9,8 +9,8 @@
   <img src="https://img.shields.io/badge/trafilatura-2.3-6A5ACD" alt="trafilatura 2.3">
   <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black" alt="Vanilla JavaScript">
-  <img src="https://img.shields.io/badge/RSS-24%20feeds-FFA500?logo=rss&logoColor=white" alt="RSS: 24 feeds">
-  <img src="https://img.shields.io/badge/tests-55%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 55 passing">
+  <img src="https://img.shields.io/badge/RSS-25%20feeds-FFA500?logo=rss&logoColor=white" alt="RSS: 25 feeds">
+  <img src="https://img.shields.io/badge/tests-57%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 57 passing">
   <img src="https://img.shields.io/badge/runs-localhost%20only-555555" alt="runs on localhost only">
 </p>
 
@@ -19,7 +19,7 @@ A personal daily reader for world, business, crypto and investing, Asia/ASEAN an
 API key or paid news service — just the public RSS feeds the publishers already offer.
 
 ```
-24 RSS feeds → fetch in parallel → clean + de-duplicate → SQLite → one page with tabs at :8770
+25 RSS feeds → fetch in parallel → clean + de-duplicate → SQLite → one page with tabs at :8770
 ```
 
 <p align="center">
@@ -42,7 +42,10 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 - **Only the last 3 days.** Stories older than 3 days are skipped when feeds are fetched and removed
   on every refresh, so the tabs stay short. Starred stories are never removed.
 - **A broken feed doesn't break the page.** Every source is fetched separately; if one is down you
-  get a one-line notice naming it and the rest of the news as usual.
+  get a one-line notice naming it and the rest of the news as usual. A dot at the top right says
+  "25 sources OK" or, in red, how many are down; click it for the details.
+- **Keyboard-friendly.** `←` `→` switch sections, `j` `k` move between stories, `Enter` opens one,
+  `s` saves, `m` marks read, `o` opens the website, `/` searches. Press `?` for the full list.
 - **Feeds without dates don't flood the top.** Nikkei Asia publishes no timestamps, so its stories
   are spaced out in feed order instead of all landing at "just now".
 
@@ -54,8 +57,8 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 | **World** | BBC World · Al Jazeera · DW · The Guardian · NPR · France 24 |
 | **Business** | BBC Business · CNBC · Guardian Business |
 | **Crypto & Investing** | CoinDesk · Cointelegraph · Decrypt · CNBC Markets · CNBC Investing · Guardian Money |
-| **Crypto Prices** (button, top right) | A live price table for 14 coins (Bitcoin, Ethereum, BNB, Solana, XRP… Optimism (OP), Arbitrum (ARB)) in US dollars: price, change, change %, open, high, low. No charts. It's TradingView's free *Market Quotes* widget, so this tab needs internet and loads from tradingview.com |
-| **Stock Prices** (button, top right) | The same price-only table for gold (XAU/USD, live) on top, then 14 US-listed tech stocks: Apple, Microsoft, Nvidia, Alphabet, Amazon, Meta, Tesla, Broadcom, TSMC, AMD, Oracle, Netflix, ASML, Intel. Free stock data from TradingView is delayed (marked with a small **D**); gold is not |
+| **Crypto Prices** (button, top right) | A live price table for 14 coins (Bitcoin, Ethereum, BNB, Solana, XRP… Optimism (OP), Arbitrum (ARB)) in US dollars: price, change, change %, open, high, low. Click any row for a day chart (daily candles) in a pop-up. It's TradingView's free *Market Quotes* widget, so this tab needs internet and loads from tradingview.com |
+| **Stock Prices** (button, top right) | The same price-only table for gold (XAU/USD, live) on top, then 15 US-listed tech stocks: Anthropic (ANT), Apple, Microsoft, Nvidia, Alphabet, Amazon, Meta, Tesla, Broadcom, TSMC, AMD, Oracle, Netflix, ASML, Intel. Free stock data from TradingView is delayed (marked with a small **D**); gold is not. Rows open the same day-chart pop-up |
 | **Asia** | CNA · Nikkei Asia · Bangkok Post · The Diplomat · BBC Asia |
 | **AI** | The Verge AI · Ars Technica AI · MIT Tech Review AI · Guardian AI · Wired AI |
 | **Saved** | Stories you starred, kept until you un-star them |
@@ -125,7 +128,7 @@ runs: a second launch sees the first and steps aside. Details, plus how to stop 
 > URL in `feeds.json` has probably changed.
 
 To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a section: `world`,
-`business`, `asia` or `tech`) and restart.
+`business`, `markets`, `asia` or `tech` for the AI tab) and restart.
 
 ## Under the hood
 

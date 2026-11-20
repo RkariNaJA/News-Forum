@@ -82,7 +82,8 @@ refetches everything (you lose read/saved marks).
    (it was saved before the pop-up existed), its author, tags and feed text are filled in.
 7. `store.record_fetch` writes the per-feed status. On error, `last_ok` keeps its previous value.
 8. `store.prune(KEEP_DAYS)` deletes **unsaved** articles published more than 3 days ago.
-9. The page shows any feed errors in a banner, then reloads the current tab.
+9. The page shows any feed errors in a banner, updates the feed-health dot (§7), then reloads the
+   current tab.
 
 ## 3. Reader view (the pop-up)
 
@@ -164,6 +165,12 @@ Investing and Guardian Money each gave 3 of 3 full stories. Rejected because the
 The Block (403), Bitcoin Magazine (403), MarketWatch (401), Investing.com (403) and Seeking Alpha (403).
 Yahoo Finance's feed URL returned 404.
 
+On 2026-11-20 the Tech & Science feeds above (BBC Tech, Ars Technica, The Verge, BBC Science) were
+replaced by AI-only feeds: The Verge AI, Ars Technica AI, MIT Tech Review AI, Guardian AI and Wired AI.
+Each returned stories when added; their full-text coverage hasn't been measured. Ars Technica's article
+pages refused before (405), so expect the feed-text fallback for Ars Technica AI. TechCrunch AI (403) and
+VentureBeat AI (429) refused the feed request itself, so they weren't used.
+
 ## 4. Settings
 
 All in [`news/config.py`](../news/config.py) unless noted.
@@ -173,7 +180,7 @@ All in [`news/config.py`](../news/config.py) unless noted.
 | `HOST` / `PORT` | `127.0.0.1` / `8770` | Where uvicorn listens. Loopback only, so the LAN cannot reach it |
 | `STALE_MINUTES` | `30` | A feed is refetched on page open when its last fetch is older than this |
 | `KEEP_DAYS` | `3` | Only stories from the last 3 days: older ones are skipped when fetched, and unsaved ones are deleted on every refresh |
-| `CATEGORIES` | world, business, markets, asia, tech | Allowed `category` values in `feeds.json`; also the tab names |
+| `CATEGORIES` | world, business, markets, asia, tech | Allowed `category` values in `feeds.json`; also the tab names. `markets` is shown as *Crypto & Investing* and `tech` as *AI* |
 | `FEEDS_PATH` / `DB_PATH` / `WEB_DIR` | `feeds.json`, `data/news.db`, `web/` | Relative to the project folder |
 | `TIMEOUT` (feeds.py) | `20.0` s | Per-request HTTP timeout |
 | `SUMMARY_MAX` (feeds.py) | `320` | Blurb length before truncation |
@@ -206,7 +213,7 @@ that isn't `http(s)`. Names must be unique: they key the status table, and a tes
 | `GET /api/articles/{id}/detail` | `?retry=true` refetches a cached failure | `{article: {...all fields, tags: [...]}, feed_text: [paragraphs], reader: {ok: true, paragraphs, author, date, image} or {ok: false, error}, highlights: [sentences]}`; 404 for an unknown id |
 | `POST /api/articles/read-all` | `{"ids": [int, ...]}` (≤ 1000) | `{updated}` |
 | `GET /api/status` | | `{feeds: [{name, url, category, last_fetch, last_ok, error, last_count}]}` |
-| `GET /` and `/static/*` | | The page and its assets |
+| `GET /` and `/static/*` | | The page and its assets, sent with `Cache-Control: no-cache` so the browser re-checks them (ETag) on every load |
 
 `today` means published in the last 24 hours, across all sections. `counts.saved` is the total
 saved, not unread. Search is a case-insensitive `LIKE` on title and summary, with `%`, `_` and `\`
@@ -232,7 +239,13 @@ connection; writes go through a `threading.Lock` because uvicorn handles request
 
 ## 7. Front end
 
-Plain HTML/CSS/JS, no build step. [`web/app.js`](../web/app.js):
+Plain HTML/CSS/JS, no build step, as three classic scripts that share globals, loaded in this order:
+[`web/prices.js`](../web/prices.js) (price pages and the chart pop-up),
+[`web/app.js`](../web/app.js) (everything else) and [`web/keys.js`](../web/keys.js) (keyboard shortcuts).
+`index.html` loads them, and `style.css`, with a version query (`?v=5`). **Raise that number whenever you
+change a JS or CSS file**, so a browser holding an older copy fetches the new one.
+
+[`web/app.js`](../web/app.js):
 
 - Inserts feed text only through `textContent`, and only gives `href`/`src` to URLs that parse as
   `http(s)` (`safeUrl`). Links open with `rel="noopener noreferrer"`, and the page sends no
@@ -242,19 +255,41 @@ Plain HTML/CSS/JS, no build step. [`web/app.js`](../web/app.js):
   storage still renders the page.
 - Updates read/saved state optimistically, then refreshes the counts from the server.
 - Shows day headings ("Today", "Yesterday", …) on every tab except **Today**.
-- Cards are focusable (`tabindex=0`) and open the reader on click or Enter (§3). The reader is a
-  native `<dialog>`, full-screen below 560 px.
+- Cards are focusable (`tabindex=0`, `data-id` = article id) and open the reader on click or Enter (§3).
+  The reader is a native `<dialog>`, full-screen below 560 px.
+- The selected tab (`aria-selected="true"`) gets a tinted background, bold accent text, a 3 px underline
+  and a filled count badge.
+- **Feed health.** `checkHealth()` reads `GET /api/status` on load and after every refresh. A feed is a
+  problem (`feedProblem`) when its last fetch had an error, or worked but returned no stories. The
+  masthead dot (`#health`) reads "● 25 sources OK" in green, or "● n sources down" in red, and opens
+  *Source status*, which lists problem feeds first, tinted, with when they last worked. The tagline's
+  source count comes from the same call.
 - **Crypto Prices** and **Stock Prices** (`view = "prices"` / `"stocks"`, page-only; the API has no such
   views). Each is opened by its own button at the top right (`#prices-btn`, `#stocks-btn`;
   `aria-pressed` while open), not a tab. Both hide the list and toolbar and embed TradingView's free
   *Market Quotes* widget (`s3.tradingview.com/external-embedding/embed-widget-market-quotes.js`), which
   renders an iframe that updates itself. TradingView has no public price API, so the widget is the
-  supported way. Each page is an entry in `PRICE_PAGES` in `app.js`: its button, group name, note text
-  and `symbols` as `EXCHANGE:TICKER` names (crypto: Binance USDT pairs; stocks: `NASDAQ:`/`NYSE:`, with spot gold `OANDA:XAUUSD` first).
+  supported way. Each page is an entry in `PRICE_PAGES` in `prices.js`: its button, group name, note text
+  and `symbols` as `EXCHANGE:TICKER` names (crypto: Binance USDT pairs; stocks: `NASDAQ:`/`NYSE:`, with spot
+  gold `OANDA:XAUUSD` first, then Anthropic `NASDAQ:ANT`, listed 2026-11-19).
   Check a new symbol on tradingview.com first: `BINANCE:TONUSDT` showed "No data". Stock prices are
   delayed in the free widget (a small **D** after the price). The widget is rebuilt when the page or the
   theme changes, because its colours are fixed at creation. Opening a price page still refreshes the
   tab counts.
+- **Day chart pop-up.** The quotes table is a cross-origin iframe, so the page can't see clicks inside
+  it (they would open a TradingView tab; the widget's `largeChartUrl` option only changes which page
+  that new tab shows). `rowButtons()` lays one transparent `<button class="quote-row">` over each row
+  instead, at the offsets in `QUOTE_ROW` (`top: 52`, `height: 35.8` px, measured on 2026-11-20 and the
+  same at 390 px and 1280 px widths). A click calls `openChart()`, which fills `#chart-dialog` with
+  TradingView's *Advanced Chart* widget (`embed-widget-advanced-chart.js`, `interval: "D"`, candles,
+  current theme, symbol change off). Closing the dialog (✕, Esc, backdrop) empties it, which stops the
+  chart. The buttons are focusable, so Tab + Enter works too.
+- **Keyboard shortcuts** (`keys.js`, help box on `?` or the footer link): `←`/`→` and `1`–`7` switch
+  tabs, `j`/`k` or `↓`/`↑` move between cards, `o` opens the story's site, `s` saves, `m` toggles
+  read, `/` focuses search, `r` forces a refresh. In the reader, `j`/`k` go to the next or previous
+  story (with *Hide read* on, `j` skips read stories), `s` saves, `o` opens the site. Keys are ignored
+  while typing in a field, with Ctrl/Alt/Meta held, and while another dialog is open. After `s` or `m`
+  re-renders the list, focus goes back to the same card, or to the one now in its place.
 
 [`web/style.css`](../web/style.css) defines colour tokens on `:root`, with a dark set applied by the
 ◐ toggle or by the OS setting. Fonts are Newsreader and Inter from Google Fonts, falling back to
@@ -269,10 +304,14 @@ Georgia and Segoe UI when offline.
   the page is opened or refreshed. There is no background timer. After a long break the first load
   takes a few seconds.
 - **Dead feeds.** NHK World's English RSS address returned 404 when this was built, so it is not in
-  the list. Use *Source status* (page footer) to spot a feed that keeps failing.
+  the list. The masthead dot turns red when a feed fails; click it (or *Source status* in the footer)
+  to see which.
+- **The price-row buttons assume TradingView's layout.** If TradingView changes the Market Quotes row
+  height or header, clicks can land on the wrong row. The chart pop-up's title names the symbol, so this
+  shows at once; re-measure and update `QUOTE_ROW` in `prices.js`.
 - **Thumbnails and fonts are loaded from the publishers and Google**, so those requests do leave
-  your PC (the feed fetches do too, obviously). The Crypto Prices tab loads TradingView's widget
-  script and iframe, only while a price page is open.
+  your PC (the feed fetches do too, obviously). The price pages load TradingView's widget script and
+  iframe, and the chart pop-up loads a second one, only while they are open.
 - **The pop-up fetches the publisher's page from your PC**, the same as opening the article.
   Publishers change their layouts, so extraction can start missing on a site and then fall back to
   the feed text. If one source keeps failing, check it with *Try again*, then look at
@@ -289,7 +328,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-55 tests, all offline:
+57 tests, all offline:
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -297,7 +336,8 @@ py -3.13 -m pytest -q
 - [`test_store.py`](../tests/test_store.py): de-duplication, tab queries, wildcard-safe search,
   flags and counts, prune keeps saved articles, `last_ok` survives an error.
 - [`test_server.py`](../tests/test_server.py): runs the API with a fake fetcher. Covers refresh and
-  errors, skipping fresh feeds, flags, input validation, status, and serving the page.
+  errors, skipping fresh feeds, flags, input validation, status, serving the page, and the
+  `no-cache` header on the page and its assets (but not on the API).
 - [`test_highlights.py`](../tests/test_highlights.py): topic sentences beating filler, exact text in
   reading order, short and empty stories, the headline and restated points not picked, sentence
   splitting around abbreviations and quotes, source-name words ignored, plural grouping.
@@ -312,6 +352,10 @@ py -3.13 -m pytest -q
   not starting another server, and windowless output going to the log file.
 
 Sample feeds and a sample article page (`article.html`) are in `tests/fixtures/`.
+
+There are no automated tests for the front end. The feed-health dot, keyboard shortcuts and day-chart
+pop-up were checked by hand in a browser on 2026-11-20, including the overlay buttons against every row
+of both price pages.
 
 ## 10. File tree
 
@@ -331,7 +375,7 @@ News Forum/
 │   ├── reader.py            ← reader view: safe page download + story extraction
 │   ├── store.py             ← SQLite (articles, feed status, reader cache)
 │   └── server.py            ← FastAPI routes
-├── web/                     ← index.html, app.js, style.css
+├── web/                     ← index.html, style.css, prices.js, app.js, keys.js
 ├── Pic/                     ← README screenshots
 ├── data/                    ← news.db + news-forum.log, created on first run (git-ignored)
 └── tests/                   ← conftest.py, test_*.py, fixtures/
@@ -365,3 +409,15 @@ News Forum/
 - **2026-11-16**: News kept for 4 days instead of 30, at the user's request ("too much"). `KEEP_DAYS`
   is 4, and the refresh skips stories older than that before storing. The first run removed 172
   stories (749 → 577). Then lowered to 3 days, also at the user's request.
+- **2026-11-20**: The **Tech & Science** tab became **AI**: its 4 feeds were replaced by 5 AI-only
+  feeds (The Verge AI, Ars Technica AI, MIT Tech Review AI, Guardian AI, Wired AI), 25 feeds in total.
+  The category key stays `tech`. Unsaved stories from the old feeds were deleted from the database.
+- **2026-11-20**: The selected tab is highlighted (tinted background, bold accent text, thicker
+  underline). The page and its assets are served with `Cache-Control: no-cache`, and `index.html`
+  versions its CSS/JS links, so changes show on a normal refresh.
+- **2026-11-20**: Feed-health dot in the masthead, and *Source status* lists problem feeds first. The
+  tagline's source count is now live. Keyboard shortcuts (`keys.js`, `?` for help). Anthropic
+  (`NASDAQ:ANT`) added to Stock Prices. The price code moved from `app.js` to `prices.js` to keep
+  files under 500 lines.
+- **2026-11-20**: Clicking a row on Crypto Prices or Stock Prices opens a day chart (daily candles,
+  TradingView's Advanced Chart widget) in a pop-up instead of a new TradingView tab.

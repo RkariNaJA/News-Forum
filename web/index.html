@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=2">
+  <link rel="stylesheet" href="/static/style.css?v=5">
   <meta name="referrer" content="no-referrer">
 </head>
 <body>
@@ -17,6 +17,7 @@
       <span id="today-date" class="dateline"></span>
       <div class="masthead-actions">
         <span id="updated" class="muted"></span>
+        <button id="health" class="health" type="button" hidden></button>
         <button id="prices-btn" class="btn" type="button" aria-pressed="false" title="Live crypto prices">Crypto Prices</button>
         <button id="stocks-btn" class="btn" type="button" aria-pressed="false" title="Live tech stock prices">Stock Prices</button>
         <button id="refresh" class="btn" type="button" title="Fetch the latest news from every source">Refresh</button>
@@ -24,7 +25,7 @@
       </div>
     </div>
     <h1 class="title">News Forum</h1>
-    <p class="tagline">International news from 24 sources, gathered for you each day.</p>
+    <p id="tagline" class="tagline">International news from 25 sources, gathered for you each day.</p>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
@@ -50,18 +51,47 @@
   <section id="prices" class="prices" hidden>
     <div id="prices-widget"></div>
     <p class="muted prices-note">Live prices from <a id="prices-source" href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView</a>,
-      <span id="prices-detail"></span></p>
+      <span id="prices-detail"></span> Click any row for its day chart.</p>
   </section>
   <p id="empty" class="empty" hidden></p>
 
   <footer class="footer">
     <button id="show-status" class="linkish" type="button">Source status</button>
+    <span class="muted">·</span>
+    <button id="show-keys" class="linkish" type="button">Keyboard shortcuts (?)</button>
     <span class="muted">· Feeds are listed in <code>feeds.json</code></span>
   </footer>
 
   <dialog id="status-dialog">
     <h2>Source status</h2>
     <table id="status-table"><thead><tr><th>Source</th><th>Section</th><th>Last fetch</th><th>Items</th><th>State</th></tr></thead><tbody></tbody></table>
+    <form method="dialog"><button class="btn">Close</button></form>
+  </dialog>
+
+  <dialog id="chart-dialog" class="chart-dialog" aria-labelledby="chart-title">
+    <div class="chart-bar">
+      <div><h2 id="chart-title"></h2><span id="chart-symbol" class="muted"></span></div>
+      <button id="chart-close" class="btn icon" type="button" aria-label="Close">✕</button>
+    </div>
+    <div id="chart-box" class="chart-box"></div>
+  </dialog>
+
+  <dialog id="keys-dialog">
+    <h2>Keyboard shortcuts</h2>
+    <table class="keys-table"><tbody>
+      <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Previous / next section</td></tr>
+      <tr><td><kbd>1</kbd> &ndash; <kbd>7</kbd></td><td>Jump to a section (Today &hellip; Saved)</td></tr>
+      <tr><td><kbd>j</kbd> <kbd>k</kbd> or <kbd>&darr;</kbd> <kbd>&uarr;</kbd></td><td>Next / previous story</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>Open the story in the reader</td></tr>
+      <tr><td><kbd>o</kbd></td><td>Open the story on its website</td></tr>
+      <tr><td><kbd>s</kbd></td><td>Save / un-save the story</td></tr>
+      <tr><td><kbd>m</kbd></td><td>Mark the story read / unread</td></tr>
+      <tr><td><kbd>/</kbd></td><td>Search headlines</td></tr>
+      <tr><td><kbd>r</kbd></td><td>Refresh every source</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close a pop-up or leave the search box</td></tr>
+      <tr><td><kbd>?</kbd></td><td>Show this list</td></tr>
+    </tbody></table>
+    <p class="muted">In the reader: <kbd>j</kbd> <kbd>k</kbd> next / previous story, <kbd>s</kbd> save, <kbd>o</kbd> open the website.</p>
     <form method="dialog"><button class="btn">Close</button></form>
   </dialog>
 
@@ -87,6 +117,8 @@
     </div>
   </dialog>
 
-  <script src="/static/app.js?v=2"></script>
+  <script src="/static/prices.js?v=5"></script>
+  <script src="/static/app.js?v=5"></script>
+  <script src="/static/keys.js?v=5"></script>
 </body>
 </html>
