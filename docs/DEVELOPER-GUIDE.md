@@ -166,10 +166,18 @@ The Block (403), Bitcoin Magazine (403), MarketWatch (401), Investing.com (403) 
 Yahoo Finance's feed URL returned 404.
 
 On 2026-11-20 the Tech & Science feeds above (BBC Tech, Ars Technica, The Verge, BBC Science) were
-replaced by AI-only feeds: The Verge AI, Ars Technica AI, MIT Tech Review AI, Guardian AI and Wired AI.
-Each returned stories when added; their full-text coverage hasn't been measured. Ars Technica's article
-pages refused before (405), so expect the feed-text fallback for Ars Technica AI. TechCrunch AI (403) and
-VentureBeat AI (429) refused the feed request itself, so they weren't used.
+replaced by AI-only feeds, measured the same way (3 newest stories each, with the app's own fetcher and
+reader):
+
+| Result | AI sources |
+|---|---|
+| ✅ In use | Wired AI (3/3), The Verge AI (3/3, short pieces), MIT Tech Review AI (3/3; one was a 500-character "Research Reports" page), The Decoder (3/3, 4,500–5,600 characters), Guardian AI (2/3: one live blog, rejected as a list page) |
+| ✅ Work, not used | TechCrunch AI (3/3, overlaps The Verge), VentureBeat AI (3/3, enterprise opinion), Hugging Face Blog (3/3, very technical) |
+| ❌ Dropped | Ars Technica AI (0/3: article pages refuse with 405, feed text only 600–1,000 characters); replaced by The Decoder the same day |
+| ❌ Not used | The Register AI (0/3, pages read as link lists), AI News (feed unreadable) |
+
+A quick `curl` check had shown TechCrunch (403) and VentureBeat (429) refusing; the app's own client
+reads both fine, so check feeds with `fetch_all`, not `curl`.
 
 ## 4. Settings
 
@@ -421,3 +429,5 @@ News Forum/
   files under 500 lines.
 - **2026-11-20**: Clicking a row on Crypto Prices or Stock Prices opens a day chart (daily candles,
   TradingView's Advanced Chart widget) in a pop-up instead of a new TradingView tab.
+- **2026-11-20**: Full-text check of the AI feeds (§3). Ars Technica AI (0/3, site refuses the reader)
+  replaced by The Decoder (3/3). Still 25 feeds.

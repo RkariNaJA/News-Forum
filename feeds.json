@@ -22,7 +22,7 @@
     {"name": "The Diplomat",      "category": "asia",     "url": "https://thediplomat.com/feed/"},
     {"name": "BBC Asia",          "category": "asia",     "url": "https://feeds.bbci.co.uk/news/world/asia/rss.xml"},
     {"name": "The Verge AI",      "category": "tech",     "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"},
-    {"name": "Ars Technica AI",   "category": "tech",     "url": "https://arstechnica.com/ai/feed/"},
+    {"name": "The Decoder",       "category": "tech",     "url": "https://the-decoder.com/feed/"},
     {"name": "MIT Tech Review AI","category": "tech",     "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed"},
     {"name": "Guardian AI",       "category": "tech",     "url": "https://www.theguardian.com/technology/artificialintelligenceai/rss"},
     {"name": "Wired AI",          "category": "tech",     "url": "https://www.wired.com/feed/tag/ai/latest/rss"}

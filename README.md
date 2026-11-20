@@ -60,7 +60,7 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 | **Crypto Prices** (button, top right) | A live price table for 14 coins (Bitcoin, Ethereum, BNB, Solana, XRP… Optimism (OP), Arbitrum (ARB)) in US dollars: price, change, change %, open, high, low. Click any row for a day chart (daily candles) in a pop-up. It's TradingView's free *Market Quotes* widget, so this tab needs internet and loads from tradingview.com |
 | **Stock Prices** (button, top right) | The same price-only table for gold (XAU/USD, live) on top, then 15 US-listed tech stocks: Anthropic (ANT), Apple, Microsoft, Nvidia, Alphabet, Amazon, Meta, Tesla, Broadcom, TSMC, AMD, Oracle, Netflix, ASML, Intel. Free stock data from TradingView is delayed (marked with a small **D**); gold is not. Rows open the same day-chart pop-up |
 | **Asia** | CNA · Nikkei Asia · Bangkok Post · The Diplomat · BBC Asia |
-| **AI** | The Verge AI · Ars Technica AI · MIT Tech Review AI · Guardian AI · Wired AI |
+| **AI** | The Verge AI · The Decoder · MIT Tech Review AI · Guardian AI · Wired AI |
 | **Saved** | Stories you starred, kept until you un-star them |
 
 <p align="center">
@@ -91,7 +91,7 @@ gets a weight for how often it appears in this story and how rare it is in the o
 stored (TF-IDF), with a bonus for headline words. The sentences whose words weigh the most win, and the
 opening sentence gets a small bonus because news puts the main point first.
 
-When a site blocks this (France 24, The Diplomat, Ars Technica), or the item is a video or TV page,
+When a site blocks this (France 24, The Diplomat), or the item is a video or TV page,
 the pop-up says so and shows everything the feed itself carries. A live check of 54 recent stories
 got the full text for 39, and all 6 Crypto & Investing feeds gave full text for 3 of 3 stories when they were added.
 
