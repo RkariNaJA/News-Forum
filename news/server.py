@@ -144,5 +144,13 @@ def create_app(feeds_path: Path, db_path: Path,
     def index():
         return FileResponse(config.WEB_DIR / "index.html")
 
+    @app.middleware("http")
+    async def revalidate_page_files(request, call_next):
+        """Make the browser re-check the page, CSS and JS on every load, so edits show on a plain refresh."""
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     app.mount("/static", StaticFiles(directory=config.WEB_DIR), name="static")
     return app

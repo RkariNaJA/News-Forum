@@ -2,7 +2,7 @@
 const $ = (s) => document.querySelector(s);
 const state = { view: "today", articles: [], source: "", hideRead: false, q: "" };
 const CATEGORY_LABEL = {
-  world: "World", business: "Business", markets: "Crypto & Investing", asia: "Asia", tech: "Tech & Science",
+  world: "World", business: "Business", markets: "Crypto & Investing", asia: "Asia", tech: "AI",
 };
 
 function store(key, value) {

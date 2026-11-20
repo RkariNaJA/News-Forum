@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/runs-localhost%20only-555555" alt="runs on localhost only">
 </p>
 
-A personal daily reader for world, business, crypto and investing, Asia/ASEAN and tech news. It runs only on
+A personal daily reader for world, business, crypto and investing, Asia/ASEAN and AI news. It runs only on
 `127.0.0.1`, keeps what you have read and saved in a local SQLite file, and needs no account,
 API key or paid news service — just the public RSS feeds the publishers already offer.
 
@@ -57,7 +57,7 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 | **Crypto Prices** (button, top right) | A live price table for 14 coins (Bitcoin, Ethereum, BNB, Solana, XRP… Optimism (OP), Arbitrum (ARB)) in US dollars: price, change, change %, open, high, low. No charts. It's TradingView's free *Market Quotes* widget, so this tab needs internet and loads from tradingview.com |
 | **Stock Prices** (button, top right) | The same price-only table for gold (XAU/USD, live) on top, then 14 US-listed tech stocks: Apple, Microsoft, Nvidia, Alphabet, Amazon, Meta, Tesla, Broadcom, TSMC, AMD, Oracle, Netflix, ASML, Intel. Free stock data from TradingView is delayed (marked with a small **D**); gold is not |
 | **Asia** | CNA · Nikkei Asia · Bangkok Post · The Diplomat · BBC Asia |
-| **Tech & Science** | BBC Tech · Ars Technica · The Verge · BBC Science |
+| **AI** | The Verge AI · Ars Technica AI · MIT Tech Review AI · Guardian AI · Wired AI |
 | **Saved** | Stories you starred, kept until you un-star them |
 
 <p align="center">

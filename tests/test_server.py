@@ -138,3 +138,10 @@ def test_stories_older_than_the_window_are_skipped(tmp_path):
     assert client.post("/api/refresh").json()["new"] == 2
     titles = [a["title"] for a in client.get("/api/articles?view=world").json()["articles"]]
     assert titles == ["0 days old", f"{config.KEEP_DAYS - 1} days old"]
+
+
+def test_page_files_are_revalidated_so_edits_show_on_refresh(setup):
+    client, _ = setup
+    for path in ("/", "/static/style.css", "/static/app.js"):
+        assert client.get(path).headers["cache-control"] == "no-cache"
+    assert "cache-control" not in client.get("/api/status").headers
