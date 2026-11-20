@@ -217,3 +217,10 @@ dialog.chart-dialog[open] { display: flex; flex-direction: column; gap: 10px; }
 .chart-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .chart-bar h2 { margin: 0 0 2px; font-size: 22px; }
 .chart-box, .chart-widget { flex: 1; min-height: 0; height: 100%; }
+
+/* ---- auto-refresh: "n new stories · Show" ---- */
+.new-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;
+  padding: 8px 8px 8px 14px; border-radius: 8px; background: var(--accent-soft); color: var(--ink); font-size: 14px;
+}
+.new-bar[hidden] { display: none; }

@@ -15,7 +15,7 @@ from . import config
 from .feeds import fetch_all, load_feeds
 from .highlights import Corpus, key_sentences
 from .reader import ReaderError, read_article, same_text
-from .store import Store
+from .store import Store, keep_cutoff
 
 VIEWS = ("today", "saved") + config.CATEGORIES
 
@@ -69,7 +69,7 @@ def create_app(feeds_path: Path, db_path: Path,
             results = fetcher(todo)
             new, errors = 0, {}
             # Feeds often carry stories older than the window; don't store them only to trim them again.
-            cutoff = (datetime.now(timezone.utc) - timedelta(days=config.KEEP_DAYS)).isoformat()
+            cutoff = keep_cutoff(config.KEEP_DAYS).isoformat()
             for f in todo:
                 articles, err = results.get(f["name"], ([], "No result"))
                 new += store.add_articles([a for a in articles if a["published"] >= cutoff])

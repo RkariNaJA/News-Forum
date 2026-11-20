@@ -100,6 +100,26 @@ def test_reader_cache_ok_forever_failures_retry(store):
     assert store.get_reader(ids[1], now=NOW + timedelta(hours=7)) is None   # old failure: try again
 
 
+def test_keep_cutoff_is_local_midnight_starting_yesterday():
+    from news.store import keep_cutoff
+    for now in (NOW, NOW.replace(hour=0, minute=1), NOW.replace(hour=23, minute=59)):
+        cut = keep_cutoff(2, now)
+        local = cut.astimezone()
+        assert cut.tzinfo == timezone.utc
+        assert (local.hour, local.minute, local.second) == (0, 0, 0)
+        assert local.date() == now.astimezone().date() - timedelta(days=1)
+    assert keep_cutoff(1, NOW).astimezone().date() == NOW.astimezone().date()   # 1 = today only
+
+
+def test_prune_uses_calendar_days(store):
+    from news.store import keep_cutoff
+    cut = keep_cutoff(2, NOW)
+    store.add_articles([{**art("https://in/1"), "published": (cut + timedelta(minutes=1)).isoformat()},
+                        {**art("https://out/1"), "published": (cut - timedelta(minutes=1)).isoformat()}], now=NOW)
+    assert store.prune(2, now=NOW) == 1
+    assert [a["link"] for a in store.list_articles("world", now=NOW)] == ["https://in/1"]
+
+
 def test_prune_drops_orphaned_reader_cache(store):
     store.add_articles([art("https://old/1", hours_ago=24 * 40)], now=NOW)
     aid = store.list_articles("world", now=NOW)[0]["id"]

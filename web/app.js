@@ -256,11 +256,14 @@ function renderCounts(counts) {
   });
 }
 
+async function loadCounts() {
+  renderCounts((await api("/api/articles?view=today")).counts);
+}
+
 async function load() {
-  if (state.view in PRICE_PAGES) {              // no stories on a price page: just keep the counts fresh
-    renderCounts((await api("/api/articles?view=today")).counts);
-    return;
-  }
+  $("#new-bar").hidden = true;                  // the list is about to show everything there is
+  newSinceShown = 0;
+  if (state.view in PRICE_PAGES) { await loadCounts(); return; }   // no stories on a price page
   const params = new URLSearchParams({ view: state.view });
   if (state.q) params.set("q", state.q);
   const data = await api(`/api/articles?${params}`);
@@ -281,7 +284,17 @@ async function setFlag(a, which, value) {
   } catch (e) { console.error(e); }
 }
 
-async function refresh(force) {
+// ---- refresh: on page open, the Refresh button, and every 2 hours while the page stays open ----
+const AUTO_REFRESH_MS = 2 * 60 * 60 * 1000;
+let lastRefreshAt = Date.now();   // in memory, so a blocked localStorage can't cause a refresh every minute
+let refreshing = false;
+let newSinceShown = 0;            // stories fetched by auto-refreshes and not yet shown in the list
+
+// auto = true: fetch in the background and leave the list alone; a bar offers the new stories instead.
+async function refresh(force, auto = false) {
+  if (refreshing) return;
+  refreshing = true;
+  lastRefreshAt = Date.now();
   const btn = $("#refresh");
   btn.disabled = true; btn.textContent = "Fetching…";
   try {
@@ -291,15 +304,27 @@ async function refresh(force) {
     alert.hidden = !errs.length;
     alert.textContent = errs.length ? `Couldn't reach ${errs.map(([n]) => n).join(", ")} this time. Other sources are fine.` : "";
     store("lastRefresh", new Date().toISOString());
+    if (auto && r.new) newSinceShown += r.new;
   } catch (e) {
     $("#feed-alert").hidden = false;
     $("#feed-alert").textContent = "Refresh failed: " + e.message;
   } finally {
     btn.disabled = false; btn.textContent = "Refresh";
+    refreshing = false;
     showUpdated();
     checkHealth();
-    await load();
+    if (auto) { await loadCounts(); showNewBar(); } else await load();
   }
+}
+
+function showNewBar() {
+  if (!newSinceShown || state.view in PRICE_PAGES) return;
+  $("#new-bar-text").textContent = `${newSinceShown} new stor${newSinceShown > 1 ? "ies" : "y"} since this list was loaded`;
+  $("#new-bar").hidden = false;
+}
+
+function autoRefreshIfDue() {
+  if (Date.now() - lastRefreshAt >= AUTO_REFRESH_MS) refresh(false, true);
 }
 
 function showUpdated() {
@@ -407,7 +432,12 @@ function init() {
     await setFlag(readerArticle, "saved", !readerArticle.saved);
     setReaderSave();
   });
-  setInterval(showUpdated, 60000);
+  setInterval(() => { showUpdated(); autoRefreshIfDue(); }, 60000);   // checked each minute, so it catches up after sleep
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) autoRefreshIfDue(); });
+  $("#new-bar-show").addEventListener("click", async () => {
+    await load();
+    $(".tabs").scrollIntoView({ behavior: "smooth" });
+  });
 
   const saved = store("view");
   selectTab(["today", "saved", ...Object.keys(PRICE_PAGES), ...Object.keys(CATEGORY_LABEL)].includes(saved) ? saved : "today");

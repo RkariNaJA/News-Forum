@@ -53,7 +53,8 @@ refetches everything (you lose read/saved marks).
 ## 2. How a refresh works
 
 1. On load, [`web/app.js`](../web/app.js) calls `POST /api/refresh` (not forced). The **Refresh**
-   button calls it with `force=true`.
+   button calls it with `force=true`. While the page stays open, an **auto-refresh** calls it (not
+   forced) once `AUTO_REFRESH_MS` (2 h) has passed since the last refresh of any kind (§7).
 2. [`server.py`](../news/server.py) re-reads `feeds.json` (so edits take effect without code
    changes, though a restart is the documented way) and picks the feeds whose `last_fetch` is older
    than `STALE_MINUTES`, or all of them when forced.
@@ -75,13 +76,16 @@ refetches everything (you lose read/saved marks).
      enclosure.
    - **author** (up to 120 characters), **tags** (up to 6, de-duplicated without regard to case) and
      **feed_text** (see §3) for the reader pop-up.
-6. Stories published more than `KEEP_DAYS` (3) days ago are dropped before storing, so an old story
-   still listed in a feed isn't added only to be trimmed again.
+6. Stories published before `keep_cutoff(KEEP_DAYS)` are dropped before storing, so an old story
+   still listed in a feed isn't added only to be trimmed again. `store.keep_cutoff(days)` is local
+   midnight at the start of the oldest day kept, in UTC: with `KEEP_DAYS = 2`, the start of yesterday
+   in the PC's time zone. Calendar days, not a rolling 48 hours, so the page never shows a third day
+   heading.
    `store.add_articles` does `INSERT OR IGNORE`, so a link that is already stored keeps its original
    row, including its read/saved flags and first-seen date. If the stored row has no `feed_text`
    (it was saved before the pop-up existed), its author, tags and feed text are filled in.
 7. `store.record_fetch` writes the per-feed status. On error, `last_ok` keeps its previous value.
-8. `store.prune(KEEP_DAYS)` deletes **unsaved** articles published more than 3 days ago.
+8. `store.prune(KEEP_DAYS)` deletes **unsaved** articles published before that same cutoff.
 9. The page shows any feed errors in a banner, updates the feed-health dot (§7), then reloads the
    current tab.
 
@@ -187,7 +191,7 @@ All in [`news/config.py`](../news/config.py) unless noted.
 |---|---|---|
 | `HOST` / `PORT` | `127.0.0.1` / `8770` | Where uvicorn listens. Loopback only, so the LAN cannot reach it |
 | `STALE_MINUTES` | `30` | A feed is refetched on page open when its last fetch is older than this |
-| `KEEP_DAYS` | `3` | Only stories from the last 3 days: older ones are skipped when fetched, and unsaved ones are deleted on every refresh |
+| `KEEP_DAYS` | `2` | Calendar days kept, in the PC's time zone: 2 = today and yesterday. Older stories are skipped when fetched, and unsaved ones are deleted on every refresh |
 | `CATEGORIES` | world, business, markets, asia, tech | Allowed `category` values in `feeds.json`; also the tab names. `markets` is shown as *Crypto & Investing* and `tech` as *AI* |
 | `FEEDS_PATH` / `DB_PATH` / `WEB_DIR` | `feeds.json`, `data/news.db`, `web/` | Relative to the project folder |
 | `TIMEOUT` (feeds.py) | `20.0` s | Per-request HTTP timeout |
@@ -250,7 +254,7 @@ connection; writes go through a `threading.Lock` because uvicorn handles request
 Plain HTML/CSS/JS, no build step, as three classic scripts that share globals, loaded in this order:
 [`web/prices.js`](../web/prices.js) (price pages and the chart pop-up),
 [`web/app.js`](../web/app.js) (everything else) and [`web/keys.js`](../web/keys.js) (keyboard shortcuts).
-`index.html` loads them, and `style.css`, with a version query (`?v=5`). **Raise that number whenever you
+`index.html` loads them, and `style.css`, with a version query (`?v=6`). **Raise that number whenever you
 change a JS or CSS file**, so a browser holding an older copy fetches the new one.
 
 [`web/app.js`](../web/app.js):
@@ -262,6 +266,18 @@ change a JS or CSS file**, so a browser holding an older copy fetches the new on
   `lastRefresh` (drives the "Updated … ago" label). All reads and writes are wrapped, so a blocked
   storage still renders the page.
 - Updates read/saved state optimistically, then refreshes the counts from the server.
+- **Auto-refresh.** A one-minute timer (the same one that updates "Updated … ago") calls
+  `autoRefreshIfDue()`, and so does the tab becoming visible again. Once `AUTO_REFRESH_MS` (2 h) has
+  passed since the last refresh, it calls `refresh(false, auto = true)`. Checking every minute instead
+  of one 2-hour timer means it catches up after the PC sleeps, and any refresh (on open, the button,
+  `r`) restarts the 2 hours. The time is kept in memory (`lastRefreshAt`), not `localStorage`, so
+  blocked storage can't make it fire every minute; `refreshing` stops overlapping refreshes. An auto
+  refresh updates the tab counts, the health dot and the feed alert but **doesn't redraw the list**:
+  if the server reports new stories, `#new-bar` says "n new stories since this list was loaded" (added
+  up across auto refreshes) and **Show** reloads the list. Any `load()` (Show, a tab change, a manual
+  refresh) hides the bar and resets the count. The bar isn't shown on the price pages. Checked in a
+  browser on 2026-11-20 with Playwright's fake clock: no call at 1 h 30, one at 2 h 01, the list left
+  as it was until Show, the next call 2 h after that.
 - Shows day headings ("Today", "Yesterday", …) on every tab except **Today**.
 - Cards are focusable (`tabindex=0`, `data-id` = article id) and open the reader on click or Enter (§3).
   The reader is a native `<dialog>`, full-screen below 560 px.
@@ -309,8 +325,10 @@ Georgia and Segoe UI when offline.
   order. After that, only new links are inserted and they get the fetch time, which is close to
   reality if you open the page a few times a day.
 - **Fetching only happens while you use it.** The server runs from login, but it fetches only when
-  the page is opened or refreshed. There is no background timer. After a long break the first load
-  takes a few seconds.
+  the page is opened or refreshed, or every 2 hours while a page stays open (the timer is in the page,
+  not the server). After a long break the first load takes a few seconds. Two open tabs each
+  auto-refresh, but the server's refresh lock and `STALE_MINUTES` stop the second from fetching
+  again.
 - **Dead feeds.** NHK World's English RSS address returned 404 when this was built, so it is not in
   the list. The masthead dot turns red when a feed fails; click it (or *Source status* in the footer)
   to see which.
@@ -337,7 +355,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-57 tests, all offline (plus 5 live ones, below, that a plain run skips):
+59 tests, all offline (plus 5 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -453,3 +471,10 @@ News Forum/
   replaced by The Decoder (3/3). Still 25 feeds.
 - **2026-11-20**: `pytest --live` runs a browser check of the price-row buttons against TradingView's
   real widget (`tests/test_price_rows_live.py`, Playwright + Edge). A plain `pytest` skips it.
+- **2026-11-20**: News kept for **today and yesterday** only, at the user's request ("too much").
+  `KEEP_DAYS` is now 2 and counts calendar days from local midnight (`store.keep_cutoff`) instead of a
+  rolling window, so there's no part-day third heading. The first run removed 507 stories (1,147 → 650
+  stored; unread World 484 → 287). The window test now uses stories one minute either side of the
+  cutoff, so it can't fail around midnight.
+- **2026-11-20**: Auto-refresh every 2 hours while the page is open, at the user's request. New stories
+  wait behind a "n new stories · Show" bar instead of redrawing the list mid-read.

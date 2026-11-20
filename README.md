@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black" alt="Vanilla JavaScript">
   <img src="https://img.shields.io/badge/RSS-25%20feeds-FFA500?logo=rss&logoColor=white" alt="RSS: 25 feeds">
-  <img src="https://img.shields.io/badge/tests-57%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 57 passing">
+  <img src="https://img.shields.io/badge/tests-59%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 59 passing">
   <img src="https://img.shields.io/badge/runs-localhost%20only-555555" alt="runs on localhost only">
 </p>
 
@@ -39,13 +39,17 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
   `at_*` are stripped) before they are stored, so a story carried by two BBC feeds shows once.
 - **It remembers you.** Read stories fade, unread counts sit on each tab, and starred stories stay
   in **Saved** even after the clean-up removes everything else.
-- **Only the last 3 days.** Stories older than 3 days are skipped when feeds are fetched and removed
-  on every refresh, so the tabs stay short. Starred stories are never removed.
+- **Only today and yesterday.** Stories from before midnight at the start of yesterday (your PC's
+  time) are skipped when feeds are fetched and removed on every refresh, so the tabs stay short.
+  Starred stories are never removed.
 - **A broken feed doesn't break the page.** Every source is fetched separately; if one is down you
   get a one-line notice naming it and the rest of the news as usual. A dot at the top right says
   "25 sources OK" or, in red, how many are down; click it for the details.
 - **Keyboard-friendly.** `←` `→` switch sections, `j` `k` move between stories, `Enter` opens one,
   `s` saves, `m` marks read, `o` opens the website, `/` searches. Press `?` for the full list.
+- **Keeps itself up to date.** While the page stays open it fetches every source again every 2 hours.
+  It doesn't move the list while you read: a bar says "12 new stories since this list was loaded",
+  and **Show** puts them in.
 - **Feeds without dates don't flood the top.** Nikkei Asia publishes no timestamps, so its stories
   are spaced out in feed order instead of all landing at "just now".
 
@@ -121,8 +125,9 @@ runs: a second launch sees the first and steps aside. Details, plus how to stop 
 >
 > ⚠️ **No login.** It only listens on `127.0.0.1`, so other PCs on the network can't reach it.
 >
-> ⚠️ **No background schedule.** News is fetched only while the page is open. This is on purpose:
-> no scheduled task means no security-software sandbox to fight.
+> ⚠️ **No background schedule.** News is fetched only while the page is open: when you open it, when
+> you click Refresh, and every 2 hours while it stays open. This is on purpose: no scheduled task
+> means no security-software sandbox to fight.
 >
 > ⚠️ **Publishers move their feeds.** If a source shows an error in *Source status* for days, its
 > URL in `feeds.json` has probably changed.
@@ -142,7 +147,7 @@ To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a sec
 | [`news/config.py`](news/config.py) | Port, paths, the 30-minute freshness window and the 3-day window |
 | [`web/app.js`](web/app.js) | The page: tabs, cards, search, filters, theme. All feed text goes in via `textContent`, never `innerHTML` |
 | [`web/style.css`](web/style.css) | Newspaper look, light and dark palettes |
-| [`tests/`](tests/) | 57 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
+| [`tests/`](tests/) | 59 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
 
 ## Documentation
 

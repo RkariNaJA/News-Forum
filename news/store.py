@@ -53,6 +53,14 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def keep_cutoff(days: int, now: datetime | None = None) -> datetime:
+    """Local midnight at the start of the oldest calendar day kept, in UTC: days=2 keeps today and
+    yesterday, matching the page's "Today" / "Yesterday" headings. Uses this PC's time zone."""
+    local = (now or _now()).astimezone()
+    start = local.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days - 1)
+    return start.astimezone(timezone.utc)
+
+
 class Store:
     def __init__(self, path: Path):
         self.path = Path(path)
@@ -110,8 +118,8 @@ class Store:
             return cur.rowcount
 
     def prune(self, keep_days: int, now: datetime | None = None) -> int:
-        """Delete unsaved articles older than keep_days. Saved articles are kept forever."""
-        cutoff = ((now or _now()) - timedelta(days=keep_days)).isoformat()
+        """Delete unsaved articles from before the last keep_days calendar days. Saved ones are kept forever."""
+        cutoff = keep_cutoff(keep_days, now).isoformat()
         with self._lock, self._conn() as c:
             cur = c.execute("DELETE FROM articles WHERE saved=0 AND published < ?", (cutoff,))
             c.execute("DELETE FROM reader_cache WHERE article_id NOT IN (SELECT id FROM articles)")

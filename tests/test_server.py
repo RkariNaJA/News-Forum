@@ -127,17 +127,20 @@ def test_status_and_index(setup):
 def test_stories_older_than_the_window_are_skipped(tmp_path):
     from datetime import timedelta
     from news import config
+    from news.store import keep_cutoff
     feeds = tmp_path / "feeds.json"
     feeds.write_text(json.dumps({"feeds": [{"name": "G", "url": "https://g/rss", "category": "world"}]}),
                      encoding="utf-8")
     now = datetime.now(timezone.utc)
-    arts = [{"link": f"https://g/{d}", "title": f"{d} days old", "summary": "", "source": "G", "category": "world",
-             "image": None, "published": (now - timedelta(days=d, minutes=1)).isoformat()}
-            for d in (0, config.KEEP_DAYS - 1, config.KEEP_DAYS, 10)]
+    cutoff = keep_cutoff(config.KEEP_DAYS)   # midnight starting yesterday, local time
+    stamps = {"now": now, "just inside": cutoff + timedelta(minutes=1),
+              "just outside": cutoff - timedelta(minutes=1), "10 days old": now - timedelta(days=10)}
+    arts = [{"link": f"https://g/{i}", "title": t, "summary": "", "source": "G", "category": "world",
+             "image": None, "published": ts.isoformat()} for i, (t, ts) in enumerate(stamps.items())]
     client = TestClient(create_app(feeds, tmp_path / "news.db", fetcher=lambda todo: {"G": (arts, None)}))
     assert client.post("/api/refresh").json()["new"] == 2
     titles = [a["title"] for a in client.get("/api/articles?view=world").json()["articles"]]
-    assert titles == ["0 days old", f"{config.KEEP_DAYS - 1} days old"]
+    assert titles == ["now", "just inside"]
 
 
 def test_page_files_are_revalidated_so_edits_show_on_refresh(setup):
