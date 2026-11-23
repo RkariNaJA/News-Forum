@@ -191,3 +191,24 @@ def test_flag_changes_return_fresh_counts(setup):
     client.post(f"/api/articles/{aid}/read", json={"value": False})
     r = client.post("/api/articles/read-all", json={"ids": [aid]}).json()
     assert r["updated"] == 1 and r["counts"]["today"] == 0
+
+
+def test_fedwatch_endpoint_returns_the_snapshot(tmp_path):
+    class FakeWatch:
+        def snapshot(self):
+            return {"next": {"date": "2026-12-09"}, "odds": None, "errors": {"futures": "down"}}
+    feeds = tmp_path / "feeds.json"
+    feeds.write_text(json.dumps({"feeds": []}), encoding="utf-8")
+    client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {}, fedwatch=FakeWatch()))
+    r = client.get("/api/fedwatch")
+    assert r.status_code == 200 and r.json()["next"]["date"] == "2026-12-09"
+
+
+def test_feargreed_endpoint_returns_the_snapshot(tmp_path):
+    class FakeIndex:
+        def snapshot(self):
+            return {"current": {"date": "2026-11-22", "value": 11, "label": "Extreme Fear"}, "history": [], "error": None}
+    feeds = tmp_path / "feeds.json"
+    feeds.write_text(json.dumps({"feeds": []}), encoding="utf-8")
+    client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {}, feargreed=FakeIndex()))
+    assert client.get("/api/feargreed").json()["current"]["value"] == 11

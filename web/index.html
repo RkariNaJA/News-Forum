@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=6">
+  <link rel="stylesheet" href="/static/style.css?v=8">
   <meta name="referrer" content="no-referrer">
 </head>
 <body>
@@ -18,6 +18,7 @@
       <div class="masthead-actions">
         <span id="updated" class="muted"></span>
         <button id="health" class="health" type="button" hidden></button>
+        <button id="fedwatch-btn" class="btn" type="button" aria-pressed="false" title="Countdown to the next FOMC decision and the market's rate odds">FedWatch</button>
         <button id="prices-btn" class="btn" type="button" aria-pressed="false" title="Live crypto prices">Crypto Prices</button>
         <button id="stocks-btn" class="btn" type="button" aria-pressed="false" title="Live tech stock prices">Stock Prices</button>
         <button id="refresh" class="btn" type="button" title="Fetch the latest news from every source">Refresh</button>
@@ -56,6 +57,52 @@
     <div id="prices-widget"></div>
     <p class="muted prices-note">Live prices from <a id="prices-source" href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView</a>,
       <span id="prices-detail"></span> Click any row for its day chart.</p>
+    <div id="fng" class="fw-card fng" hidden>
+      <div class="fng-head">
+        <h3 class="fw-heading">Crypto Fear &amp; Greed Index</h3>
+        <div id="fng-ranges" class="fng-ranges" role="group" aria-label="Chart range"></div>
+      </div>
+      <div id="fng-status" class="alert" hidden></div>
+      <div id="fng-body" hidden>
+        <div class="fng-now">
+          <div class="fng-reading"><strong id="fng-value" class="fng-value"></strong><span id="fng-label" class="fng-label"></span></div>
+          <div class="fng-scale" aria-hidden="true">
+            <span class="xfear"></span><span class="fear"></span><span class="neutral"></span><span class="greed"></span><span class="xgreed"></span>
+            <i id="fng-marker" class="fng-marker"></i>
+          </div>
+          <p id="fng-date" class="muted"></p>
+          <ul id="fng-compare" class="fng-compare"></ul>
+        </div>
+        <div id="fng-chart" class="fng-chart"></div>
+        <p class="muted">0 = extreme fear, 100 = extreme greed. From <a id="fng-source" target="_blank" rel="noopener noreferrer">alternative.me</a>
+          (volatility, momentum and volume, social media, Bitcoin dominance and Google Trends), updated once a day.
+          TradingView has no Fear &amp; Greed symbol.</p>
+      </div>
+    </div>
+  </section>
+  <section id="fedwatch" class="fedwatch" hidden>
+    <div id="fw-status" class="alert" hidden></div>
+    <div id="fw-next" class="fw-card fw-next" hidden>
+      <p class="fw-kicker">Next FOMC decision</p>
+      <h2 id="fw-when" class="fw-when"></h2>
+      <p id="fw-local" class="muted"></p>
+      <div id="fw-countdown" class="fw-countdown" role="timer"></div>
+    </div>
+    <div id="fw-odds" class="fw-card" hidden>
+      <h3 id="fw-odds-title" class="fw-heading"></h3>
+      <p id="fw-current" class="muted"></p>
+      <div id="fw-bars" class="fw-bars"></div>
+      <p id="fw-implied" class="muted"></p>
+    </div>
+    <div id="fw-upcoming-box" class="fw-card" hidden>
+      <h3 class="fw-heading">Later meetings</h3>
+      <ol id="fw-upcoming" class="fw-upcoming"></ol>
+      <p class="muted"><span id="fw-sep-note">* with new economic projections (dot plot). </span>Decisions come out at 2:00 pm ET on the meeting's last day.</p>
+    </div>
+    <p class="muted prices-note">Odds worked out on this PC with CME's FedWatch method from CBOT 30-Day Fed Funds
+      futures (delayed quotes via Yahoo Finance): <span id="fw-contracts"></span>. Target range from the New York Fed,
+      meeting dates from the Federal Reserve. They can differ a little from CME's own figures.</p>
+    <p><a id="fw-cme" class="btn" target="_blank" rel="noopener noreferrer">Open CME FedWatch ↗</a></p>
   </section>
   <p id="empty" class="empty" hidden></p>
 
@@ -121,8 +168,10 @@
     </div>
   </dialog>
 
-  <script src="/static/prices.js?v=6"></script>
-  <script src="/static/app.js?v=6"></script>
-  <script src="/static/keys.js?v=6"></script>
+  <script src="/static/fedwatch.js?v=8"></script>
+  <script src="/static/feargreed.js?v=8"></script>
+  <script src="/static/prices.js?v=8"></script>
+  <script src="/static/app.js?v=8"></script>
+  <script src="/static/keys.js?v=8"></script>
 </body>
 </html>

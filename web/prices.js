@@ -2,6 +2,7 @@
 // ---- Crypto Prices / Stock Prices: TradingView's free "Market Quotes" widget (prices only, no chart) ----
 // Each page is opened by its own top-right button, not a tab. Symbols are TradingView "EXCHANGE:TICKER" names.
 const PRICE_PAGES = {
+  fedwatch: { button: "#fedwatch-btn", section: "#fedwatch", mount: () => mountFedWatch() },   // fedwatch.js
   prices: {
     button: "#prices-btn", group: "Crypto",
     link: "https://www.tradingview.com/markets/cryptocurrencies/",
@@ -37,6 +38,9 @@ function currentTheme() {
 
 function mountPrices(view) {
   const page = PRICE_PAGES[view];
+  if (page.mount) { page.mount(); return; }   // a page with its own section, not a TradingView table
+  $("#fng").hidden = view !== "prices";        // the Fear & Greed panel (feargreed.js) is on Crypto Prices only
+  if (view === "prices") mountFearGreed();
   const theme = currentTheme();
   if (pricesShown === `${view}/${theme}`) return;
   pricesShown = `${view}/${theme}`;

@@ -377,7 +377,8 @@ function selectTab(view) {
   for (const [v, page] of Object.entries(PRICE_PAGES)) $(page.button).setAttribute("aria-pressed", String(v === view));
   for (const id of ["#list", ".toolbar"]) $(id).hidden = prices;
   if (prices) $("#empty").hidden = true;
-  $("#prices").hidden = !prices;
+  $("#prices").hidden = !prices || Boolean(PRICE_PAGES[view].section);
+  $("#fedwatch").hidden = view !== "fedwatch";
   if (prices) mountPrices(view);
   load();
 }

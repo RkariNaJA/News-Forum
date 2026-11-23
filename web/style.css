@@ -13,6 +13,7 @@
   --asia: #a3271f;
   --tech: #6b4aa0;
   --markets: #a35a0b;
+  --greed-strong: #008c70;   /* Fear & Greed: checked against --accent for colour-blind separation */
   --hl: #fbe39b;
   --serif: "Newsreader", Georgia, "Times New Roman", serif;
   --sans: "Inter", "Segoe UI", system-ui, sans-serif;
@@ -32,6 +33,7 @@
   --asia: #e2675c;
   --tech: #b49ae6;
   --markets: #f0a35c;
+  --greed-strong: #10a896;
   --hl: rgba(234, 179, 8, .38);
 }
 @media (prefers-color-scheme: dark) {
@@ -39,6 +41,7 @@
     --bg: #15140f; --paper: #1e1c17; --ink: #ece7dc; --ink-soft: #bdb6a8; --muted: #8b8478;
     --rule: #343027; --accent: #e2675c; --accent-soft: #3a2320; --star: #e8b23a;
     --world: #7fb0e0; --business: #6cc497; --asia: #e2675c; --tech: #b49ae6; --markets: #f0a35c;
+    --greed-strong: #10a896;
     --hl: rgba(234, 179, 8, .38);
   }
 }
@@ -224,3 +227,67 @@ dialog.chart-dialog[open] { display: flex; flex-direction: column; gap: 10px; }
   padding: 8px 8px 8px 14px; border-radius: 8px; background: var(--accent-soft); color: var(--ink); font-size: 14px;
 }
 .new-bar[hidden] { display: none; }
+
+/* ---- FedWatch: next FOMC decision and the rate odds ---- */
+.fedwatch { padding: 18px 0 0; max-width: 760px; margin: 0 auto; }
+.fw-card { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+.fw-next { text-align: center; }
+.fw-kicker { margin: 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.fw-when { font-family: var(--serif); font-size: clamp(22px, 4vw, 30px); margin: 4px 0 2px; }
+.fw-heading { font-family: var(--serif); font-size: 20px; margin: 0 0 2px; }
+.fw-countdown { display: flex; justify-content: center; gap: 10px; margin-top: 12px; }
+.fw-cell { display: flex; flex-direction: column; align-items: center; min-width: 64px; padding: 8px 6px; border-radius: 8px; background: var(--bg); }
+.fw-cell strong { font-family: var(--serif); font-size: 32px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.fw-cell span { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.fw-due { font-family: var(--serif); font-size: 24px; color: var(--accent); }
+.fw-bars { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 8px; }
+.fw-row { display: grid; grid-template-columns: 9.5em 8em 1fr 4.2em; align-items: center; gap: 10px; font-size: 14px; padding: 4px 6px; border-radius: 6px; }
+.fw-row:hover { background: var(--bg); }
+.fw-row.top { font-weight: 600; }
+.fw-range { font-variant-numeric: tabular-nums; }
+.fw-move { color: var(--ink-soft); }
+.fw-track { height: 14px; background: var(--bg); border-radius: 0 4px 4px 0; }
+.fw-fill { display: block; height: 100%; background: var(--markets); border-radius: 0 4px 4px 0; }
+.fw-prob { text-align: right; font-variant-numeric: tabular-nums; }
+.fedwatch a.btn { display: inline-block; color: var(--ink); text-decoration: none; }
+.fw-upcoming { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; padding: 0; margin: 8px 0; font-size: 14px; }
+@media (max-width: 560px) {
+  .fw-row { grid-template-columns: auto 1fr auto; }
+  .fw-row .fw-track { grid-column: 1 / -1; grid-row: 2; }
+  .fw-cell { min-width: 0; flex: 1; }
+  .fw-cell strong { font-size: 24px; }
+}
+
+/* ---- Crypto Fear & Greed Index (Crypto Prices page): red = fear, grey = neutral, green = greed ---- */
+.fng { margin-top: 18px; }
+.fng { --xfear: var(--accent); --fear: color-mix(in srgb, var(--accent) 45%, var(--paper));
+       --neutral: color-mix(in srgb, var(--muted) 45%, var(--paper));
+       --greed: color-mix(in srgb, var(--greed-strong) 45%, var(--paper)); --xgreed: var(--greed-strong); }
+.fng-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fng-ranges { display: flex; gap: 4px; }
+.fng-ranges .btn { padding: 4px 10px; font-size: 12px; }
+.fng-now { margin: 10px 0 6px; }
+.fng-reading { display: flex; align-items: baseline; gap: 10px; }
+.fng-value { font-family: var(--serif); font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
+.fng-label { font-size: 17px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+.fng-label::before, .fng-chip::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--zone); }
+.xfear { --zone: var(--xfear); } .fear { --zone: var(--fear); } .neutral { --zone: var(--neutral); }
+.greed { --zone: var(--greed); } .xgreed { --zone: var(--xgreed); }
+.fng-scale { position: relative; display: grid; grid-template-columns: 25fr 21fr 8fr 21fr 25fr; gap: 2px; height: 8px; margin: 12px 0 6px; }
+.fng-scale span { background: var(--zone); }
+.fng-scale span:first-child { border-radius: 4px 0 0 4px; } .fng-scale span:last-of-type { border-radius: 0 4px 4px 0; }
+.fng-marker { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; background: var(--ink); border: 2px solid var(--paper); border-radius: 3px; box-sizing: content-box; }
+.fng-compare { display: flex; flex-wrap: wrap; gap: 6px 22px; list-style: none; padding: 0; margin: 8px 0 0; font-size: 14px; }
+.fng-compare li { display: flex; align-items: center; gap: 7px; }
+.fng-chip { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-soft); font-size: 13px; }
+.fng-chart { position: relative; margin: 14px 0 6px; }
+.fng-svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.fng-band { fill: var(--zone); opacity: .13; }
+.fng-grid { stroke: var(--rule); stroke-width: 1; }
+.fng-axis { fill: var(--muted); font-size: 11px; font-family: var(--sans); }
+.fng-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.fng-cross { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3 3; }
+.fng-dot { fill: var(--ink); stroke: var(--paper); stroke-width: 2; }
+.fng-tip { position: absolute; transform: translate(-50%, calc(-100% - 12px)); pointer-events: none; display: flex; gap: 8px; align-items: baseline;
+           padding: 5px 9px; border-radius: 6px; background: var(--paper); border: 1px solid var(--rule); box-shadow: 0 2px 8px rgba(0,0,0,.12); font-size: 13px; white-space: nowrap; }
+.fng a { color: inherit; }

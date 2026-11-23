@@ -14,6 +14,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field
 
 from . import config
+from .feargreed import FearGreed
+from .fedwatch import FedWatch
 from .feeds import fetch_all, load_feeds
 from .highlights import Corpus, key_sentences
 from .reader import ReaderError, read_article, same_text
@@ -32,9 +34,12 @@ class IdsBody(BaseModel):
 
 def create_app(feeds_path: Path, db_path: Path,
                fetcher: Callable[[list[dict]], dict] = fetch_all,
-               reader: Callable[[str], dict] = read_article) -> FastAPI:
+               reader: Callable[[str], dict] = read_article, fedwatch: FedWatch | None = None,
+               feargreed: FearGreed | None = None) -> FastAPI:
     app = FastAPI(title="News Forum")
     store = Store(db_path)
+    fedwatch = fedwatch or FedWatch()
+    feargreed = feargreed or FearGreed()
     refresh_lock = threading.Lock()
     corpus_cache: dict = {"state": None, "corpus": None}
     corpus_lock = threading.Lock()
@@ -146,6 +151,16 @@ def create_app(feeds_path: Path, db_path: Path,
         return {"feeds": [{**f, **{k: statuses.get(f["name"], {}).get(k)
                                    for k in ("last_fetch", "last_ok", "error", "last_count")}}
                           for f in feeds]}
+
+    @app.get("/api/fedwatch")
+    def fed_watch():
+        """Next FOMC decision, upcoming meetings, today's target range and the futures-implied odds."""
+        return fedwatch.snapshot()
+
+    @app.get("/api/feargreed")
+    def fear_greed():
+        """Crypto Fear & Greed Index: today's value and the daily history (alternative.me)."""
+        return feargreed.snapshot()
 
     @app.get("/")
     def index():

@@ -120,6 +120,7 @@ def test_clicking_a_row_opens_the_day_chart_not_a_tab(browser, app_url):
         assert len(page.context.pages) == tabs_before
         page.keyboard.press("Escape")
         assert not page.evaluate("document.querySelector('#chart-dialog').open")
-        assert page.locator("#chart-box iframe").count() == 0
+        # The dialog's "close" event (which removes the chart) fires on a later task, not at once.
+        page.wait_for_function("!document.querySelector('#chart-box iframe')", timeout=2000)
     finally:
         page.close()

@@ -233,6 +233,8 @@ that isn't `http(s)`. Names must be unique: they key the status table, and a tes
 | `GET /api/articles/{id}/detail` | `?retry=true` refetches a cached failure | `{article: {...all fields, tags: [...]}, feed_text: [paragraphs], reader: {ok: true, paragraphs, author, date, image} or {ok: false, error}, highlights: [sentences]}`; 404 for an unknown id |
 | `POST /api/articles/read-all` | `{"ids": [int, ...]}` (≤ 1000) | `{updated, counts}` |
 | `GET /api/counts` | | `{tab: unread}`: the tab badges on their own, without the stories |
+| `GET /api/fedwatch` | | `{next: {date, label, sep, decision}, upcoming: [...], target: {low, high, effr, as_of}, odds: {meeting, outcomes: [{move_bp, low, high, prob}], rate_before, rate_after, anchor, contracts: [{symbol, price, time}]}, errors: {name: message}, cme_url}`; a part that failed is `null` and named in `errors` (calendar, rate or futures) |
+| `GET /api/feargreed` | | `{current: {date, value, label}, history: [[date, value], ...] oldest first, next_update, error, source_url}`; with nothing cached and alternative.me down, `current` is `null` and `error` says why |
 | `GET /api/status` | | `{feeds: [{name, url, category, last_fetch, last_ok, error, last_count}]}` |
 | `GET /` and `/static/*` | | The page and its assets, sent with `Cache-Control: no-cache` so the browser re-checks them (ETag) on every load |
 
@@ -264,10 +266,12 @@ connection; writes go through a `threading.Lock` because uvicorn handles request
 
 ## 7. Front end
 
-Plain HTML/CSS/JS, no build step, as three classic scripts that share globals, loaded in this order:
+Plain HTML/CSS/JS, no build step, as five classic scripts that share globals, loaded in this order:
+[`web/fedwatch.js`](../web/fedwatch.js) (the FedWatch page),
+[`web/feargreed.js`](../web/feargreed.js) (the Fear & Greed panel),
 [`web/prices.js`](../web/prices.js) (price pages and the chart pop-up),
 [`web/app.js`](../web/app.js) (everything else) and [`web/keys.js`](../web/keys.js) (keyboard shortcuts).
-`index.html` loads them, and `style.css`, with a version query (`?v=6`). **Raise that number whenever you
+`index.html` loads them, and `style.css`, with a version query (`?v=8`). **Raise that number whenever you
 change a JS or CSS file**, so a browser holding an older copy fetches the new one.
 
 [`web/app.js`](../web/app.js):
@@ -314,6 +318,47 @@ change a JS or CSS file**, so a browser holding an older copy fetches the new on
   delayed in the free widget (a small **D** after the price). The widget is rebuilt when the page or the
   theme changes, because its colours are fixed at creation. Opening a price page still refreshes the
   tab counts.
+- **FedWatch** (`#fedwatch-btn`, left of Crypto Prices) is also a `PRICE_PAGES` entry, but with its own
+  `section` (`#fedwatch`) and a `mount` function (`mountFedWatch` in `fedwatch.js`) instead of a
+  TradingView table. It reads `GET /api/fedwatch` (reused for 5 minutes in the page), shows the next
+  decision in ET and in the PC's time, a days/hours/min/sec countdown that ticks only while the page is
+  on screen, the odds as one bar per outcome (one colour, every bar labelled, hover text), and the later
+  meetings. When the countdown reaches zero it fetches again, which moves it on to the next meeting.
+- **Crypto Fear & Greed Index** (`#fng`, in the `#prices` section under the note) shows on Crypto Prices
+  only: `mountPrices` unhides it and calls `mountFearGreed()` (`feargreed.js`). It reads
+  `GET /api/feargreed` (reused for an hour in the page): today's value and label, a 0-100 scale in the
+  five bands alternative.me uses (0-25 Extreme Fear, 26-46 Fear, 47-54 Neutral, 55-75 Greed, 76-100
+  Extreme Greed), yesterday / last week / last month, and an SVG line chart with the bands behind it, a
+  crosshair and a tooltip. The range (30D, 90D, 1Y, All) is kept in `localStorage` (`fngRange`), and the
+  chart redraws when its box resizes. Fear is `--accent` (red), greed is `--greed-strong`, a teal-leaning
+  green (`#008c70` light, `#10a896` dark): the site's `--business` green sat too close to the red for
+  deuteranopes (OKLab Delta E 6.7 against a target of 8), the new ones measure 11.6 and 9.7. Every colour
+  also has its label beside it.
+
+### FedWatch odds (`news/fedwatch.py`)
+
+CME's FedWatch page sends `frame-ancestors` with a list of partner sites, and the QuikStrike tool inside
+it refuses requests without a CME referrer, so neither can be embedded. The odds use CME's published
+method instead:
+
+1. **Meetings** come from the Fed's calendar page (`parse_calendar`): the last day of each meeting, 2:00
+   pm ET (`zoneinfo`, so summer time is right; Windows needs the `tzdata` package). Notation votes are
+   skipped; "Apr/May 30-1" ends in May; a `*` means new projections.
+2. **Today's target range** and effective rate (EFFR) come from the New York Fed's API.
+3. **Futures**: `ZQ` + month code + year (`ZQZ26` = December 2026), from Yahoo's chart API as
+   `ZQZ26.CBT`. Each settles on 100 minus the month's average EFFR.
+4. **Rates around the meeting** (`meeting_rates`): with `N` days in the month and the decision on day
+   `d`, the old rate holds `d` days and the new one `N - d`. If the month before has no meeting, its
+   contract gives the start rate and the meeting month gives the end rate; else, if the month after has
+   no meeting, it gives the end rate; else today's EFFR is the start. A decision on the month's last day
+   takes its end rate from the next month.
+5. **Odds** (`outcome_odds`): the move in 25 bp steps is split between the two nearest whole steps
+   (-0.78 steps = 78 % a 25 bp cut, 22 % no change), labelled as target ranges from today's.
+
+Answers are cached in memory: the calendar for 24 h, the rate for 3 h, quotes for 10 minutes. If a
+source fails, its last good answer is used; with none, the page names the missing part and shows the
+rest. On 23 Nov 2026 it gave 9 Dec: 90 % a 25 bp hike to 4.00-4.25 % (ZQX26 96.12, ZQZ26 95.96), and
+the curve agreed (Jan 4.135 %, Feb 4.27 %). CME's own page couldn't be fetched to compare.
 - **Day chart pop-up.** The quotes table is a cross-origin iframe, so the page can't see clicks inside
   it (they would open a TradingView tab; the widget's `largeChartUrl` option only changes which page
   that new tab shows). `rowButtons()` lays one transparent `<button class="quote-row">` over each row
@@ -346,6 +391,10 @@ Georgia and Segoe UI when offline.
 - **Dead feeds.** NHK World's English RSS address returned 404 when this was built, so it is not in
   the list. The masthead dot turns red when a feed fails; click it (or *Source status* in the footer)
   to see which.
+- **FedWatch odds are worked out here, not taken from CME.** They follow CME's method but use delayed
+  Yahoo quotes and today's EFFR, so they can differ a little from CME's page. Yahoo's chart API is
+  unofficial and could change; then the page says the futures are missing and still shows the
+  countdown. If the Fed redesigns its calendar page, `parse_calendar` finds no meetings and says so.
 - **The price-row buttons assume TradingView's layout.** If TradingView changes the Market Quotes row
   height or header, clicks can land on the wrong row. The chart pop-up's title names the symbol, so this
   shows at once, and `pytest --live` (§9) checks it directly; re-measure and update `QUOTE_ROW` in
@@ -369,7 +418,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-71 tests, all offline (plus 5 live ones, below, that a plain run skips):
+91 tests, all offline (plus 5 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -392,6 +441,13 @@ py -3.13 -m pytest -q
 - Pop-up additions to the other test files: `author`, `tags` and `feed_text` parsing; backfill;
   migrating a first-release database; reader cache (kept on success, retried after a failure);
   `/detail` fetching once and then using the cache; `retry=true`; a crashing extractor.
+- [`test_fedwatch.py`](../tests/test_fedwatch.py): calendar parsing (notation votes, two-month
+  meetings, `*`, 2:00 pm ET in winter and summer), contract symbols, the odds split, each way of
+  anchoring the rates (month before, month after, last-day meeting, today's rate), caching, skipping
+  past meetings, a failing source, and falling back to the last good answer. All sources are faked.
+- [`test_feargreed.py`](../tests/test_feargreed.py): history ordered oldest first, today's value and
+  label, the next-update time, changed or empty data rejected, the hour-long cache, and the last answer
+  kept when a later fetch fails.
 - [`test_main.py`](../tests/test_main.py): detecting a server already on the port, a second launch
   not starting another server, and windowless output going to the log file.
 
@@ -433,12 +489,14 @@ News Forum/
 ├── news/
 │   ├── __main__.py          ← entry point: --no-browser, single instance, log file, uvicorn
 │   ├── config.py            ← settings
+│   ├── feargreed.py         ← Crypto Fear & Greed Index (alternative.me), cached
+│   ├── fedwatch.py          ← FedWatch page: FOMC calendar, target range, futures, odds
 │   ├── feeds.py             ← fetch + parse
 │   ├── highlights.py        ← key sentences for the pop-up highlights (TF-IDF, no AI)
 │   ├── reader.py            ← reader view: safe page download + story extraction
 │   ├── store.py             ← SQLite (articles, feed status, reader cache)
 │   └── server.py            ← FastAPI routes
-├── web/                     ← index.html, style.css, prices.js, app.js, keys.js
+├── web/                     ← index.html, style.css, fedwatch.js, feargreed.js, prices.js, app.js, keys.js
 ├── Pic/                     ← README screenshots
 ├── data/                    ← news.db + news-forum.log, created on first run (git-ignored)
 └── tests/                   ← conftest.py, test_*.py, fixtures/
@@ -503,3 +561,15 @@ News Forum/
   `GET /api/counts`, so a click no longer reloads up to 400 stories. The reader looks up a host name
   before fetching and refuses it if any address it points to is local (a public name set to
   `127.0.0.1` used to get through). Leftover "3-day" wording fixed. 71 tests.
+- **2026-11-23**: **FedWatch** button, left of Crypto Prices, at the user's request: a countdown to the
+  next FOMC decision and a bar chart of the futures-implied odds, with the later meetings. CME's tool
+  can't be embedded, so `news/fedwatch.py` applies CME's method to CBOT 30-Day Fed Funds futures, with
+  the Fed's calendar and the New York Fed's target range; `GET /api/fedwatch`; `tzdata` added to
+  `requirements.txt`. The live chart-pop-up test now waits for the dialog's `close` event (it fires on a
+  later task): that was the occasional live-test failure noted on 2026-11-20 (it failed 2 of 5 runs
+  before the fix, passed 10 of 10 after). Page files now `?v=7`. 83 tests.
+- **2026-11-23**: **Crypto Fear & Greed Index** under the Crypto Prices table, at the user's request:
+  today's value on a 0-100 scale, yesterday / last week / last month, and a history chart (30D to All,
+  from Feb 2018) with a hover readout. TradingView has no such symbol, so `news/feargreed.py` reads
+  alternative.me's free API; `GET /api/feargreed`. New `--greed-strong` colour, checked with the
+  palette validator for colour-blind separation. Page files now `?v=8`. 91 tests.

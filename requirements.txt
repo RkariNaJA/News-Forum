@@ -4,3 +4,4 @@ httpx
 feedparser
 trafilatura
 pytest
+tzdata
