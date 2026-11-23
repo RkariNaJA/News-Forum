@@ -1,7 +1,9 @@
 # News Forum — Developer Guide
 
 > The landing page is [`../README.md`](../README.md). This guide is for whoever runs, edits or
-> debugs the app: setup, internals, every setting, the API, the schema and the caveats.
+> debugs the app: setup, internals, every setting, the API, the schema and the caveats. The market
+> pages (BTC ETF, FedWatch, Crypto / Stock Prices, Fear & Greed) are in
+> [`MARKET-PAGES.md`](MARKET-PAGES.md), and the history of changes in [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -275,7 +277,7 @@ Plain HTML/CSS/JS, no build step, as six classic scripts that share globals, loa
 [`web/feargreed.js`](../web/feargreed.js) (the Fear & Greed panel),
 [`web/prices.js`](../web/prices.js) (price pages and the chart pop-up),
 [`web/app.js`](../web/app.js) (everything else) and [`web/keys.js`](../web/keys.js) (keyboard shortcuts).
-`index.html` loads them, and `style.css`, with a version query (`?v=12`). **Raise that number whenever you
+`index.html` loads them, and `style.css`, with a version query (`?v=15`). **Raise that number whenever you
 change a JS or CSS file**, so a browser holding an older copy fetches the new one.
 
 [`web/app.js`](../web/app.js):
@@ -310,82 +312,9 @@ change a JS or CSS file**, so a browser holding an older copy fetches the new on
   masthead dot (`#health`) reads "● 25 sources OK" in green, or "● n sources down" in red, and opens
   *Source status*, which lists problem feeds first, tinted, with when they last worked. The tagline's
   source count comes from the same call.
-- **Crypto Prices** and **Stock Prices** (`view = "prices"` / `"stocks"`, page-only; the API has no such
-  views). Each is an item (`#prices-btn`, `#stocks-btn`) in the **Markets** drop-down (see
-  below). Both hide the list and toolbar and embed TradingView's free
-  *Market Quotes* widget (`s3.tradingview.com/external-embedding/embed-widget-market-quotes.js`), which
-  renders an iframe that updates itself. TradingView has no public price API, so the widget is the
-  supported way. Each page is an entry in `PRICE_PAGES` in `prices.js`: its group name, note text
-  and `symbols` as `EXCHANGE:TICKER` names (crypto: Binance USDT pairs; stocks: `NASDAQ:`/`NYSE:`, with spot
-  gold `OANDA:XAUUSD` first, then Anthropic `NASDAQ:ANT`, listed 2026-11-19).
-  Check a new symbol on tradingview.com first: `BINANCE:TONUSDT` showed "No data". Stock prices are
-  delayed in the free widget (a small **D** after the price). The widget is rebuilt when the page or the
-  theme changes, because its colours are fixed at creation. Opening a price page still refreshes the
-  tab counts.
-- **Markets** (`#markets-toggle`, top right, left of Refresh) opens a drop-down (`#market-tabs`,
-  `.market-pop`, absolutely placed under the button, right-aligned) with the four market pages: BTC ETF,
-  FedWatch, Crypto Prices, Stock Prices. `setMarketsOpen` in `app.js` shows or hides it and sets
-  `aria-expanded`; picking an item calls `selectTab` and closes it, as do Esc (focus goes back to the
-  button) and any click outside `.markets-menu`. `selectTab` sets `aria-pressed` on the item of the open
-  page and the class `on` on the button, which turns it dark like a pressed `.btn`. The items carry
-  `data-view` but sit outside `.tabs`, so `←`/`→` and the number keys still cycle the news tabs only.
-- **FedWatch** (`#fedwatch-btn`, in the Markets menu) is also a `PRICE_PAGES` entry, but with its own
-  `section` (`#fedwatch`) and a `mount` function (`mountFedWatch` in `fedwatch.js`) instead of a
-  TradingView table. It reads `GET /api/fedwatch` (reused for 5 minutes in the page), shows the next
-  decision in ET and in the PC's time, a days/hours/min/sec countdown that ticks only while the page is
-  on screen, the odds as one bar per outcome (one colour, every bar labelled, hover text), and the later
-  meetings. When the countdown reaches zero it fetches again, which moves it on to the next meeting.
-- **Crypto Fear & Greed Index** (`#fng`, in the `#prices` section under the note) shows on Crypto Prices
-  only: `mountPrices` unhides it and calls `mountFearGreed()` (`feargreed.js`). It reads
-  `GET /api/feargreed` (reused for an hour in the page): today's value and label, a 0-100 scale in the
-  five bands alternative.me uses (0-25 Extreme Fear, 26-46 Fear, 47-54 Neutral, 55-75 Greed, 76-100
-  Extreme Greed), yesterday / last week / last month, and an SVG line chart with the bands behind it, a
-  crosshair and a tooltip. The range (30D, 90D, 1Y, All) is kept in `localStorage` (`fngRange`), and the
-  chart redraws when its box resizes. Fear is `--accent` (red), greed is `--greed-strong`, a teal-leaning
-  green (`#008c70` light, `#10a896` dark): the site's `--business` green sat too close to the red for
-  deuteranopes (OKLab Delta E 6.7 against a target of 8), the new ones measure 11.6 and 9.7. Every colour
-  also has its label beside it.
-- **BTC ETF** (`#etf-btn`, first in the Markets menu) is a `PRICE_PAGES` entry with its own `section` (`#etf`) and
-  `mount` (`mountEtf` in `etf.js`), like FedWatch; `selectTab` shows the section of whichever such page is
-  open and hides the rest. It reads `GET /api/etf` (reused for 10 minutes in the page; at once again if
-  the last try had no key or failed): four cards with the day's totals and a table of the funds, largest
-  first. Ratios from the server (fee, premium / discount) are shown as percents. Inflows are coloured
-  (`--greed-strong` in, `--accent` out) and always carry a + or − sign, so colour is never the only cue.
-  A fund with no figures this time is listed with dashes and named in the note above. With no key, the
-  `#etf-setup` card gives the steps, with the `.env` file's full path.
-
-### FedWatch odds (`news/fedwatch.py`)
-
-CME's FedWatch page sends `frame-ancestors` with a list of partner sites, and the QuikStrike tool inside
-it refuses requests without a CME referrer, so neither can be embedded. The odds use CME's published
-method instead:
-
-1. **Meetings** come from the Fed's calendar page (`parse_calendar`): the last day of each meeting, 2:00
-   pm ET (`zoneinfo`, so summer time is right; Windows needs the `tzdata` package). Notation votes are
-   skipped; "Apr/May 30-1" ends in May; a `*` means new projections.
-2. **Today's target range** and effective rate (EFFR) come from the New York Fed's API.
-3. **Futures**: `ZQ` + month code + year (`ZQZ26` = December 2026), from Yahoo's chart API as
-   `ZQZ26.CBT`. Each settles on 100 minus the month's average EFFR.
-4. **Rates around the meeting** (`meeting_rates`): with `N` days in the month and the decision on day
-   `d`, the old rate holds `d` days and the new one `N - d`. If the month before has no meeting, its
-   contract gives the start rate and the meeting month gives the end rate; else, if the month after has
-   no meeting, it gives the end rate; else today's EFFR is the start. A decision on the month's last day
-   takes its end rate from the next month.
-5. **Odds** (`outcome_odds`): the move in 25 bp steps is split between the two nearest whole steps
-   (-0.78 steps = 78 % a 25 bp cut, 22 % no change), labelled as target ranges from today's.
-
-Answers are cached in memory: the calendar for 24 h, the rate for 3 h, quotes for 10 minutes. If a
-source fails, its last good answer is used; with none, the page names the missing part and shows the
-rest. On 23 Nov 2026 it gave 9 Dec: 90 % a 25 bp hike to 4.00-4.25 % (ZQX26 96.12, ZQZ26 95.96), and
-the curve agreed (Jan 4.135 %, Feb 4.27 %). CME's own page couldn't be fetched to compare.
-- **Day chart pop-up.** The quotes table is a cross-origin iframe, so the page can't see clicks inside
-  it (they would open a TradingView tab; the widget's `largeChartUrl` option only changes which page
-  that new tab shows). `rowButtons()` lays one transparent `<button class="quote-row">` over each row
-  instead, at the offsets in `QUOTE_ROW` (`top: 52`, `height: 35.8` px, measured on 2026-11-20 and the
-  same at 390 px and 1280 px widths). A click calls `openChart()`, which fills `#chart-dialog` with
-  TradingView's *Advanced Chart* widget (`embed-widget-advanced-chart.js`, `interval: "D"`, candles,
-  current theme, symbol change off). Closing the dialog (✕, Esc, backdrop) empties it, which stops the
-  chart. The buttons are focusable, so Tab + Enter works too.
+- **Market pages** (the **Markets ▾** menu at the top right: BTC ETF, FedWatch, Crypto Prices with the
+  Fear & Greed panel, Stock Prices, and the day-chart pop-up) have their own file:
+  [`MARKET-PAGES.md`](MARKET-PAGES.md).
 - **Keyboard shortcuts** (`keys.js`, help box on `?` or the footer link): `←`/`→` and `1`–`7` switch
   tabs, `j`/`k` or `↓`/`↑` move between cards, `o` opens the story's site, `s` saves, `m` toggles
   read, `/` focuses search, `r` forces a refresh. In the reader, `j`/`k` go to the next or previous
@@ -410,18 +339,6 @@ Georgia and Segoe UI when offline.
 - **Dead feeds.** NHK World's English RSS address returned 404 when this was built, so it is not in
   the list. The masthead dot turns red when a feed fails; click it (or *Source status* in the footer)
   to see which.
-- **BTC ETF figures come from SoSoValue, not CoinGlass.** CoinGlass fills its page from a private API.
-  SoSoValue's docs don't state the units of `sponsor_fee` and `prem_dsc`; they are read as ratios
-  (0.0025 = 0.25 %), which matches the example values. If the fee column shows 25.00 %, they are percents
-  and the page should stop multiplying by 100. Flows and net assets settle a day late (T+1).
-- **FedWatch odds are worked out here, not taken from CME.** They follow CME's method but use delayed
-  Yahoo quotes and today's EFFR, so they can differ a little from CME's page. Yahoo's chart API is
-  unofficial and could change; then the page says the futures are missing and still shows the
-  countdown. If the Fed redesigns its calendar page, `parse_calendar` finds no meetings and says so.
-- **The price-row buttons assume TradingView's layout.** If TradingView changes the Market Quotes row
-  height or header, clicks can land on the wrong row. The chart pop-up's title names the symbol, so this
-  shows at once, and `pytest --live` (§9) checks it directly; re-measure and update `QUOTE_ROW` in
-  `prices.js`.
 - **Thumbnails and fonts are loaded from the publishers and Google**, so those requests do leave
   your PC (the feed fetches do too, obviously). The price pages load TradingView's widget script and
   iframe, and the chart pop-up loads a second one, only while they are open.
@@ -433,6 +350,8 @@ Georgia and Segoe UI when offline.
   Guardian's, have the publisher's logo printed on them.
 - **No authentication.** That's fine on loopback, with the host-name and same-origin checks (§5). Don't change `HOST` to `0.0.0.0` without adding
   some.
+- Caveats of the market pages (SoSoValue, FedWatch, TradingView's layout) are in
+  [`MARKET-PAGES.md`](MARKET-PAGES.md#6-caveats).
 - The test-count badge in the README is static.
 
 ## 9. Tests
@@ -441,7 +360,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-101 tests, all offline (plus 5 live ones, below, that a plain run skips):
+104 tests, all offline (plus 5 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -470,7 +389,8 @@ py -3.13 -m pytest -q
   past meetings, a failing source, and falling back to the last good answer. All sources are faked.
 - [`test_etf.py`](../tests/test_etf.py): the table built from faked SoSoValue answers (largest fund
   first, string numbers, dates as text or millisecond timestamps, a fund with no figures), a refused key,
-  the rate limit, a changed fund list, the `{code, data}` wrapper, the key from `.env` or the environment,
+  the rate limit (stopping at it, without asking for the rest), a refresh with most funds missing
+  failing while the last complete table stays, a changed fund list, the `{code, data}` wrapper, the key from `.env` or the environment,
   no fetch without a key, the 30-minute cache, the wait after a failure, and keeping the last answer.
 - [`test_feargreed.py`](../tests/test_feargreed.py): history ordered oldest first, today's value and
   label, the next-update time, changed or empty data rejected, the hour-long cache, and the last answer
@@ -508,7 +428,10 @@ have no automated tests; they were checked by hand in a browser on 2026-11-20.
 ```
 News Forum/
 ├── README.md                ← landing page
-├── docs/DEVELOPER-GUIDE.md  ← this file
+├── docs/
+│   ├── DEVELOPER-GUIDE.md   ← this file
+│   ├── MARKET-PAGES.md      ← the Markets menu pages
+│   └── CHANGELOG.md         ← history of changes
 ├── Start News Forum.bat     ← launcher (py -3.13 -m news)
 ├── feeds.json               ← source list
 ├── requirements.txt
@@ -529,86 +452,3 @@ News Forum/
 ├── data/                    ← news.db + news-forum.log, created on first run (git-ignored)
 └── tests/                   ← conftest.py, test_*.py, fixtures/
 ```
-
-## 11. Changelog
-
-- **2026-11-16**: First version. 18 feeds across 4 sections. Tabs, read/save, search, source
-  filter, source status, dark mode. Undated feeds get spread timestamps. README and developer guide
-  added.
-- **2026-11-16**: Starts at Windows login from a Startup shortcut (`pythonw`, `--no-browser`). Only
-  one copy runs at a time, and windowless output goes to `data/news-forum.log`.
-- **2026-11-16**: Reader view. Clicking a card opens a pop-up with the full story, extracted with
-  trafilatura and cached, falling back to the feed text. Feeds now keep author, tags and full feed
-  text, and older databases are migrated automatically.
-- **2026-11-16**: New **Crypto & Investing** tab (`markets` category, amber tag) with 6 feeds: CoinDesk,
-  Cointelegraph, Decrypt, CNBC Markets, CNBC Investing and Guardian Money. 24 feeds in total. A story already
-  stored from another feed (e.g. the main CNBC feed) keeps its first tab.
-- **2026-11-16**: Key-word highlights in the pop-up. Distinctive words and names (TF-IDF, no AI) get a
-  marker stroke, and money and percent figures are bold and underlined. There's a *Key words* row and
-  a **Highlights** switch. A headline repeated as the first paragraph is now removed.
-- **2026-11-16**: Highlights changed from key words to key sentences, at the user's request: 1 to 3 of
-  the story's most important sentences get a marker. `news/keywords.py` became `news/highlights.py`;
-  the word marks, money/percent marks and the *Key words* row are gone.
-- **2026-11-16**: New **Crypto Prices** tab: TradingView's *Market Quotes* widget, prices only (no
-  chart), 12 coins in USD. Then moved, at the user's request, from the tab bar to a **Crypto Prices**
-  button at the top right, next to Refresh. Optimism (`BINANCE:OPUSDT`) and Arbitrum (`BINANCE:ARBUSDT`) added: 14 coins.
-- **2026-11-16**: New **Stock Prices** button next to Crypto Prices: the same price-only widget for 14
-  US-listed tech stocks. Both pages now share one `PRICE_PAGES` table in `app.js`. Gold
-  (`OANDA:XAUUSD`, live, not delayed) added as the first row of Stock Prices.
-- **2026-11-16**: News kept for 4 days instead of 30, at the user's request ("too much"). `KEEP_DAYS`
-  is 4, and the refresh skips stories older than that before storing. The first run removed 172
-  stories (749 → 577). Then lowered to 3 days, also at the user's request.
-- **2026-11-20**: The **Tech & Science** tab became **AI**: its 4 feeds were replaced by 5 AI-only
-  feeds (The Verge AI, Ars Technica AI, MIT Tech Review AI, Guardian AI, Wired AI), 25 feeds in total.
-  The category key stays `tech`. Unsaved stories from the old feeds were deleted from the database.
-- **2026-11-20**: The selected tab is highlighted (tinted background, bold accent text, thicker
-  underline). The page and its assets are served with `Cache-Control: no-cache`, and `index.html`
-  versions its CSS/JS links, so changes show on a normal refresh.
-- **2026-11-20**: Feed-health dot in the masthead, and *Source status* lists problem feeds first. The
-  tagline's source count is now live. Keyboard shortcuts (`keys.js`, `?` for help). Anthropic
-  (`NASDAQ:ANT`) added to Stock Prices. The price code moved from `app.js` to `prices.js` to keep
-  files under 500 lines.
-- **2026-11-20**: Clicking a row on Crypto Prices or Stock Prices opens a day chart (daily candles,
-  TradingView's Advanced Chart widget) in a pop-up instead of a new TradingView tab.
-- **2026-11-20**: Full-text check of the AI feeds (§3). Ars Technica AI (0/3, site refuses the reader)
-  replaced by The Decoder (3/3). Still 25 feeds.
-- **2026-11-20**: `pytest --live` runs a browser check of the price-row buttons against TradingView's
-  real widget (`tests/test_price_rows_live.py`, Playwright + Edge). A plain `pytest` skips it.
-- **2026-11-20**: News kept for **today and yesterday** only, at the user's request ("too much").
-  `KEEP_DAYS` is now 2 and counts calendar days from local midnight (`store.keep_cutoff`) instead of a
-  rolling window, so there's no part-day third heading. The first run removed 507 stories (1,147 → 650
-  stored; unread World 484 → 287). The window test now uses stories one minute either side of the
-  cutoff, so it can't fail around midnight.
-- **2026-11-20**: Auto-refresh every 2 hours while the page is open, at the user's request. New stories
-  wait behind a "n new stories · Show" bar instead of redrawing the list mid-read.
-- **2026-11-23**: Undated feeds capped at their 15 newest entries (Nikkei Asia had 50 of 239 stored
-  stories). Trimmed links are remembered for 14 days in `pruned_links`, so a feed that still lists them
-  can't bring them back as new. The server now answers only to `127.0.0.1` / `localhost` and refuses
-  `POST`s from other sites (`Origin` ≠ `Host`). 64 tests.
-- **2026-11-23**: Save / Mark read replies now carry the tab counts, and the badges use the new
-  `GET /api/counts`, so a click no longer reloads up to 400 stories. The reader looks up a host name
-  before fetching and refuses it if any address it points to is local (a public name set to
-  `127.0.0.1` used to get through). Leftover "3-day" wording fixed. 71 tests.
-- **2026-11-23**: **FedWatch** button, left of Crypto Prices, at the user's request: a countdown to the
-  next FOMC decision and a bar chart of the futures-implied odds, with the later meetings. CME's tool
-  can't be embedded, so `news/fedwatch.py` applies CME's method to CBOT 30-Day Fed Funds futures, with
-  the Fed's calendar and the New York Fed's target range; `GET /api/fedwatch`; `tzdata` added to
-  `requirements.txt`. The live chart-pop-up test now waits for the dialog's `close` event (it fires on a
-  later task): that was the occasional live-test failure noted on 2026-11-20 (it failed 2 of 5 runs
-  before the fix, passed 10 of 10 after). Page files now `?v=7`. 83 tests.
-- **2026-11-23**: **Crypto Fear & Greed Index** under the Crypto Prices table, at the user's request:
-  today's value on a 0-100 scale, yesterday / last week / last month, and a history chart (30D to All,
-  from Feb 2018) with a hover readout. TradingView has no such symbol, so `news/feargreed.py` reads
-  alternative.me's free API; `GET /api/feargreed`. New `--greed-strong` colour, checked with the
-  palette validator for colour-blind separation. Page files now `?v=8`. 91 tests.
-- **2026-11-23**: **BTC ETF** button, left of FedWatch, at the user's request: the US spot Bitcoin ETFs
-  in a table like CoinGlass's (fee, price, premium / discount, daily and total net inflow, net assets,
-  value traded) with the day's totals. CoinGlass's table comes from a private API, so at the user's
-  choice `news/etf.py` reads SoSoValue's API with a free key (`SOSOVALUE_API_KEY` in `.env`,
-  git-ignored, or the environment); `GET /api/etf`. `selectTab` now shows any page's own section generically.
-  Checked in the browser against faked data only, as no key was set up yet. Page files `?v=10`. 101 tests.
-- **2026-11-23**: the four market page buttons (BTC ETF, FedWatch, Crypto Prices, Stock Prices) left the
-  masthead, which had grown crowded (three rows on a phone), into one **Markets ▾** drop-down at the top
-  right, at the user's request (hidden until wanted). A fold-out group at the end of the tab row was tried
-  first; the user preferred the top right. The SoSoValue key now lives in `.env` (`SOSOVALUE_API_KEY=`,
-  git-ignored) instead of `data/sosovalue.key`. Page files `?v=12`.

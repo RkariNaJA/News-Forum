@@ -28,11 +28,15 @@ TTL = 1800            # flows settle once a day; one refresh is 2 + one call per
 RETRY_AFTER = 120     # after a failure, wait this long before asking again
 MAX_FUNDS = 17        # stay under the 20-a-minute limit in one refresh
 HISTORY_DAYS = 30
-FUND_FIELDS = ("fee", "price", "prem_dsc", "net_inflow", "cum_inflow", "net_assets", "value_traded")
 
 
 class EtfError(Exception):
     """The ETF data could not be read; the message is short and shown on the page."""
+
+
+class EtfAbort(EtfError):
+    """A refusal that makes the rest of a refresh pointless: no connection, the key refused, or the rate
+    limit reached. Asking for the remaining funds would only use up more of the limit."""
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
@@ -128,11 +132,11 @@ def fetch(key: str, client: httpx.Client | None = None) -> dict:
         try:
             r = client.get(path, params=params)
         except httpx.HTTPError as exc:
-            raise EtfError(f"Couldn't reach SoSoValue ({type(exc).__name__})") from exc
+            raise EtfAbort(f"Couldn't reach SoSoValue ({type(exc).__name__})") from exc
         if r.status_code in (401, 403):
-            raise EtfError(f"SoSoValue refused the API key (HTTP {r.status_code}); check {KEY_ENV} in .env")
+            raise EtfAbort(f"SoSoValue refused the API key (HTTP {r.status_code}); check {KEY_ENV} in .env")
         if r.status_code == 429:
-            raise EtfError("SoSoValue's limit of 20 requests a minute was reached; try again in a minute")
+            raise EtfAbort("SoSoValue's limit of 20 requests a minute was reached; try again in a minute")
         try:
             payload = r.json()
         except ValueError as exc:
@@ -151,12 +155,16 @@ def fetch(key: str, client: httpx.Client | None = None) -> dict:
             try:
                 snap = get(f"/etfs/{f['ticker']}/market-snapshot")
                 rows.append(parse_fund(f, snap if isinstance(snap, dict) else None))
-            except EtfError:
+            except EtfAbort:
+                raise                         # the whole refresh fails; the last complete table stays
+            except EtfError:                  # one fund's answer was bad: list it with dashes
                 rows.append(parse_fund(f, None))
                 missing.append(str(f["ticker"]))
     finally:
         if own:
             client.close()
+    if rows and len(missing) * 2 > len(rows):
+        raise EtfError(f"SoSoValue gave no figures for {len(missing)} of {len(rows)} funds")
     rows.sort(key=lambda r: r["net_assets"] if r["net_assets"] is not None else -1, reverse=True)
     return {"funds": rows, "totals": totals, "history": history, "missing": missing}
 

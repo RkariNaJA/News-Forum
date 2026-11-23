@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black" alt="Vanilla JavaScript">
   <img src="https://img.shields.io/badge/RSS-25%20feeds-FFA500?logo=rss&logoColor=white" alt="RSS: 25 feeds">
-  <img src="https://img.shields.io/badge/tests-101%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 101 passing">
+  <img src="https://img.shields.io/badge/tests-104%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 104 passing">
   <img src="https://img.shields.io/badge/runs-localhost%20only-555555" alt="runs on localhost only">
 </p>
 
@@ -63,7 +63,7 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 | **Business** | BBC Business · CNBC · Guardian Business |
 | **Crypto & Investing** | CoinDesk · Cointelegraph · Decrypt · CNBC Markets · CNBC Investing · Guardian Money |
 | **Markets ▾** (button, top right) | Opens a short menu of the four market pages: BTC ETF, FedWatch, Crypto Prices and Stock Prices. Picking one opens it and closes the menu; Esc or a click elsewhere closes it too. The button turns dark while a market page is open, and the menu marks which one |
-| **BTC ETF** (Markets menu) | The US spot Bitcoin ETFs in one table, like CoinGlass's ETF page: fee, price, premium / discount, daily and total net inflow, net assets and value traded for each fund, largest first, with the day's totals above it. CoinGlass doesn't let other sites read its table, so the figures come from SoSoValue's API, which needs a free key (see *Running it*). Flows settle a day late |
+| **BTC ETF** (Markets menu) | The US spot Bitcoin ETFs in one table, like CoinGlass's ETF page: fee, price, premium / discount, daily and total net inflow, net assets and value traded for each fund, largest first, with the day's totals and a bar chart of the daily net inflow (about the last 20 trading days, hover for each day) above it. CoinGlass doesn't let other sites read its table, so the figures come from SoSoValue's API, which needs a free key (see *Running it*). Flows settle a day late |
 | **FedWatch** (Markets menu) | A countdown to the next FOMC rate decision (2:00 pm ET, also shown in your time) and a bar chart of the market's odds for each outcome, plus the later meeting dates. CME doesn't allow its own FedWatch tool to be embedded, so the odds are worked out on your PC with CME's published method from CBOT 30-Day Fed Funds futures (delayed quotes via Yahoo Finance). They are close to CME's figures but not identical; **Open CME FedWatch ↗** opens the real one |
 | **Crypto Prices** (Markets menu) | A live price table for 14 coins (Bitcoin, Ethereum, BNB, Solana, XRP… Optimism (OP), Arbitrum (ARB)) in US dollars: price, change, change %, open, high, low. Click any row for a day chart (daily candles) in a pop-up. It's TradingView's free *Market Quotes* widget, so this tab needs internet and loads from tradingview.com. Below the table: the **Crypto Fear & Greed Index** (0 = extreme fear, 100 = extreme greed) with today's value, yesterday / last week / last month, and a history chart (30D, 90D, 1Y, All, back to 2018) with a hover readout. TradingView has no Fear & Greed symbol, so it comes from alternative.me's free API |
 | **Stock Prices** (Markets menu) | The same price-only table for gold (XAU/USD, live) on top, then 15 US-listed tech stocks: Anthropic (ANT), Apple, Microsoft, Nvidia, Alphabet, Amazon, Meta, Tesla, Broadcom, TSMC, AMD, Oracle, Netflix, ASML, Intel. Free stock data from TradingView is delayed (marked with a small **D**); gold is not. Rows open the same day-chart pop-up |
@@ -164,12 +164,15 @@ To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a sec
 | [`web/etf.js`](web/etf.js) | The BTC ETF page: the totals cards and the fund table |
 | [`web/feargreed.js`](web/feargreed.js) | The Fear & Greed panel on Crypto Prices: today's reading, the 0-100 scale and the history chart |
 | [`web/style.css`](web/style.css) | Newspaper look, light and dark palettes |
-| [`tests/`](tests/) | 101 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
+| [`tests/`](tests/) | 104 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
 
 ## Documentation
 
 [`docs/DEVELOPER-GUIDE.md`](docs/DEVELOPER-GUIDE.md) — setup, how a refresh works step by step,
-every setting, the API, the database schema, the file tree, caveats and the changelog.
+every setting, the API, the database schema, the file tree and caveats.
+[`docs/MARKET-PAGES.md`](docs/MARKET-PAGES.md) — the Markets menu pages: BTC ETF, FedWatch (how the
+odds are worked out), Crypto / Stock Prices and the Fear & Greed panel.
+[`docs/CHANGELOG.md`](docs/CHANGELOG.md) — what changed, and when.
 
 <sub>Kept local by <code>.gitignore</code>: the article database <code>data/news.db</code> (created
 on first run) and Python caches. The test-count badge is static and is updated by hand.</sub>

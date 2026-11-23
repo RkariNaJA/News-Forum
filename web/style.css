@@ -293,8 +293,14 @@ dialog.chart-dialog[open] { display: flex; flex-direction: column; gap: 10px; }
 .etf-table tbody tr:hover { background: var(--bg); }
 .etf-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .etf-ticker { font-weight: 700; }
+.etf-table.no-prem .etf-prem { display: none; }
 .etf-name { color: var(--ink-soft); white-space: normal; min-width: 180px; }
 .etf-in { color: var(--greed-strong); } .etf-out { color: var(--accent); }
+.etf-flows { position: relative; margin-top: 8px; }
+.etf-bar.in { fill: var(--greed-strong); } .etf-bar.out { fill: var(--accent); }
+.etf-bar.active { stroke: var(--ink); stroke-width: 1.5; }
+.etf-zero { stroke: var(--ink-soft); stroke-width: 1; }
+.etf-hit { fill: transparent; }
 
 /* ---- Crypto Fear & Greed Index (Crypto Prices page): red = fear, grey = neutral, green = greed ---- */
 .fng { margin-top: 18px; }

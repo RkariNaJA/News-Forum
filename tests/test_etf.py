@@ -63,6 +63,38 @@ def test_fetch_explains_a_refused_key_and_the_rate_limit():
         fetch("k", client({"/etfs": (429, {"code": 42901, "message": "Rate limit exceeded"})}))
 
 
+def test_fetch_stops_at_the_rate_limit_instead_of_asking_for_the_rest():
+    routes, seen = good_routes(), []
+    routes["/etfs/IBIT/market-snapshot"] = (429, {"code": 42901, "message": "Rate limit exceeded"})
+    with pytest.raises(etf.EtfAbort, match="20 requests a minute"):
+        fetch("k", client(routes, seen))
+    asked = [path for path, _ in seen]
+    assert asked[-1].endswith("/IBIT/market-snapshot")              # FBTC, then IBIT refused: stop there
+    assert not any(p.endswith("/BRRR/market-snapshot") for p in asked)
+
+
+def test_fetch_fails_when_most_funds_have_no_figures():
+    routes = good_routes()
+    del routes["/etfs/IBIT/market-snapshot"]                       # 2 of 3 funds now have no figures
+    with pytest.raises(EtfError, match="no figures for 2 of 3 funds"):
+        fetch("k", client(routes))
+
+
+def test_a_half_failed_refresh_keeps_the_last_complete_table():
+    clock, answers = Clock(), [{"funds": [{"ticker": "IBIT", "net_assets": 1.0}], "missing": []}]
+
+    def get(key):
+        if not answers:
+            raise EtfError("SoSoValue gave no figures for 2 of 3 funds")
+        return answers.pop()
+
+    e = BtcEtf(get=get, key=lambda: "k", clock=clock)
+    e.snapshot()
+    clock.t += etf.TTL
+    s = e.snapshot()
+    assert s["funds"][0]["net_assets"] == 1.0 and s["missing"] == []
+
+
 def test_fetch_rejects_a_changed_fund_list():
     with pytest.raises(EtfError, match="has changed"):
         fetch("k", client({"/etfs": (200, wrap([{"name": "no ticker"}]))}))
