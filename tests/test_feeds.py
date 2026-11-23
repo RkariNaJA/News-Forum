@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from news.feeds import clean_text, load_feeds, normalize_link, parse_feed
+from news.feeds import UNDATED_MAX, clean_text, load_feeds, normalize_link, parse_feed
 from conftest import FIXTURES
 
 NOW = datetime(2026, 11, 16, 12, 0, tzinfo=timezone.utc)
@@ -95,3 +95,9 @@ def test_real_feeds_json_is_valid():
     assert {f["category"] for f in feeds} == {"world", "business", "markets", "asia", "tech"}
     assert sum(f["category"] == "markets" for f in feeds) >= 3   # Crypto & Investing tab
     assert len({f["name"] for f in feeds}) == len(feeds)
+
+
+def test_undated_feeds_are_capped():
+    items = "".join(f"<item><title>T{i}</title><link>https://a.com/{i}</link></item>" for i in range(50))
+    arts = parse_feed(f"<rss><channel>{items}</channel></rss>".encode(), WORLD, now=NOW)
+    assert [a["title"] for a in arts] == [f"T{i}" for i in range(UNDATED_MAX)]   # the newest, in feed order

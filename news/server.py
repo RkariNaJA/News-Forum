@@ -5,10 +5,12 @@ import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field
 
 from . import config
@@ -151,6 +153,19 @@ def create_app(feeds_path: Path, db_path: Path,
         if request.url.path == "/" or request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-cache"
         return response
+
+    @app.middleware("http")
+    async def same_origin_writes(request, call_next):
+        """Refuse writes sent by another site's page open in the same browser. Browsers always add
+        Origin to a cross-site POST; tools such as curl send none and are allowed."""
+        origin = request.headers.get("origin")
+        if request.method not in ("GET", "HEAD", "OPTIONS") and origin is not None:
+            if urlsplit(origin).netloc.lower() != request.headers.get("host", "").lower():
+                return JSONResponse({"detail": "Cross-site request refused"}, status_code=403)
+        return await call_next(request)
+
+    # Added last, so it runs first: a request addressed to any other host name is refused outright.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(config.ALLOWED_HOSTS))
 
     app.mount("/static", StaticFiles(directory=config.WEB_DIR), name="static")
     return app

@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black" alt="Vanilla JavaScript">
   <img src="https://img.shields.io/badge/RSS-25%20feeds-FFA500?logo=rss&logoColor=white" alt="RSS: 25 feeds">
-  <img src="https://img.shields.io/badge/tests-59%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 59 passing">
+  <img src="https://img.shields.io/badge/tests-64%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 64 passing">
   <img src="https://img.shields.io/badge/runs-localhost%20only-555555" alt="runs on localhost only">
 </p>
 
@@ -50,8 +50,9 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 - **Keeps itself up to date.** While the page stays open it fetches every source again every 2 hours.
   It doesn't move the list while you read: a bar says "12 new stories since this list was loaded",
   and **Show** puts them in.
-- **Feeds without dates don't flood the top.** Nikkei Asia publishes no timestamps, so its stories
-  are spaced out in feed order instead of all landing at "just now".
+- **Feeds without dates don't flood the top.** Nikkei Asia publishes no timestamps, so only its 15
+  newest stories are taken, spaced out in feed order instead of all landing at "just now". Once a story
+  has been cleared out it is not brought back as new, even if the feed still lists it.
 
 ## What you get
 
@@ -123,7 +124,9 @@ runs: a second launch sees the first and steps aside. Details, plus how to stop 
 > ⚠️ **Needs internet** — for the feeds themselves, plus the thumbnails and the Google Fonts the
 > page loads.
 >
-> ⚠️ **No login.** It only listens on `127.0.0.1`, so other PCs on the network can't reach it.
+> ⚠️ **No login.** It only listens on `127.0.0.1`, so other PCs on the network can't reach it. It also
+> refuses requests addressed to any other host name, and changes (save, mark read, refresh) sent by
+> other websites open in your browser.
 >
 > ⚠️ **No background schedule.** News is fetched only while the page is open: when you open it, when
 > you click Refresh, and every 2 hours while it stays open. This is on purpose: no scheduled task
@@ -147,7 +150,7 @@ To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a sec
 | [`news/config.py`](news/config.py) | Port, paths, the 30-minute freshness window and the 3-day window |
 | [`web/app.js`](web/app.js) | The page: tabs, cards, search, filters, theme. All feed text goes in via `textContent`, never `innerHTML` |
 | [`web/style.css`](web/style.css) | Newspaper look, light and dark palettes |
-| [`tests/`](tests/) | 59 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
+| [`tests/`](tests/) | 64 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
 
 ## Documentation
 

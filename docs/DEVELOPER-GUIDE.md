@@ -71,7 +71,8 @@ refetches everything (you lose read/saved marks).
      is cut at 320 characters on a word boundary. Entries without a title are dropped.
    - **published**: `published_parsed`, else `updated_parsed`, as UTC, **capped at now** so a feed
      with future dates can't pin itself to the top. If neither exists, the entry gets
-     `now − n × 20 min`, where *n* counts the undated entries so far (see §8).
+     `now − n × 20 min`, where *n* counts the undated entries so far (see §8). Only the first
+     `UNDATED_MAX` (15) undated entries are kept; the rest are dropped.
    - **image**: first `http(s)` URL from `media:thumbnail`, `media:content` or an `image/*`
      enclosure.
    - **author** (up to 120 characters), **tags** (up to 6, de-duplicated without regard to case) and
@@ -82,10 +83,12 @@ refetches everything (you lose read/saved marks).
    in the PC's time zone. Calendar days, not a rolling 48 hours, so the page never shows a third day
    heading.
    `store.add_articles` does `INSERT OR IGNORE`, so a link that is already stored keeps its original
-   row, including its read/saved flags and first-seen date. If the stored row has no `feed_text`
+   row, including its read/saved flags and first-seen date. A link in `pruned_links` (trimmed in the
+   last 14 days) is skipped, so an undated feed can't bring back a story it still lists. If the stored row has no `feed_text`
    (it was saved before the pop-up existed), its author, tags and feed text are filled in.
 7. `store.record_fetch` writes the per-feed status. On error, `last_ok` keeps its previous value.
-8. `store.prune(KEEP_DAYS)` deletes **unsaved** articles published before that same cutoff.
+8. `store.prune(KEEP_DAYS)` deletes **unsaved** articles published before that same cutoff and
+   records their links in `pruned_links`. Entries older than `FORGET_PRUNED` (14 days) are dropped.
 9. The page shows any feed errors in a banner, updates the feed-health dot (§7), then reloads the
    current tab.
 
@@ -190,6 +193,7 @@ All in [`news/config.py`](../news/config.py) unless noted.
 | Setting | Value | Effect |
 |---|---|---|
 | `HOST` / `PORT` | `127.0.0.1` / `8770` | Where uvicorn listens. Loopback only, so the LAN cannot reach it |
+| `ALLOWED_HOSTS` | `127.0.0.1`, `localhost` | Host names the server answers; any other `Host` header gets 400 (blocks DNS rebinding) |
 | `STALE_MINUTES` | `30` | A feed is refetched on page open when its last fetch is older than this |
 | `KEEP_DAYS` | `2` | Calendar days kept, in the PC's time zone: 2 = today and yesterday. Older stories are skipped when fetched, and unsaved ones are deleted on every refresh |
 | `CATEGORIES` | world, business, markets, asia, tech | Allowed `category` values in `feeds.json`; also the tab names. `markets` is shown as *Crypto & Investing* and `tech` as *AI* |
@@ -197,6 +201,8 @@ All in [`news/config.py`](../news/config.py) unless noted.
 | `TIMEOUT` (feeds.py) | `20.0` s | Per-request HTTP timeout |
 | `SUMMARY_MAX` (feeds.py) | `320` | Blurb length before truncation |
 | `UNDATED_STEP` (feeds.py) | `20 min` | Spacing for entries with no date |
+| `UNDATED_MAX` (feeds.py) | `15` | Most undated entries taken from one feed per fetch |
+| `FORGET_PRUNED` (store.py) | `14 days` | How long a trimmed link is kept from being stored again |
 | `LIST_LIMIT` (store.py) | `400` | Most articles returned for one tab |
 | `FEED_TEXT_MAX` (feeds.py) | `6000` | Feed text kept for the pop-up fallback |
 | `READER_RETRY` (store.py) | `6 h` | How long a failed article extraction is cached before it is retried |
@@ -227,6 +233,9 @@ that isn't `http(s)`. Names must be unique: they key the status table, and a tes
 | `GET /api/status` | | `{feeds: [{name, url, category, last_fetch, last_ok, error, last_count}]}` |
 | `GET /` and `/static/*` | | The page and its assets, sent with `Cache-Control: no-cache` so the browser re-checks them (ETag) on every load |
 
+**Same-origin writes.** A `POST` whose `Origin` header doesn't match its `Host` gets 403, so another
+site open in the browser can't save, mark or refresh. Requests with no `Origin` (curl, scripts) pass.
+
 `today` means published in the last 24 hours, across all sections. `counts.saved` is the total
 saved, not unread. Search is a case-insensitive `LIKE` on title and summary, with `%`, `_` and `\`
 escaped so they match literally.
@@ -240,6 +249,7 @@ articles(id PK, link UNIQUE, title, summary, source, category, image,
   -- indexes: (published), (category, published)
 feed_status(name PK, url, category, last_fetch, last_ok, error, last_count)
 reader_cache(article_id PK, fetched, ok 0/1, data (JSON), error)
+pruned_links(link PK, pruned)                     -- trimmed links, kept 14 days
 ```
 
 **Migration:** on start, `Store` adds any missing `author` / `tags` / `feed_text` columns with
@@ -321,8 +331,8 @@ Georgia and Segoe UI when offline.
 
 ## 8. Caveats
 
-- **Undated feeds.** Nikkei Asia sends no dates. Its first fetch is spread 20 minutes apart in feed
-  order. After that, only new links are inserted and they get the fetch time, which is close to
+- **Undated feeds.** Nikkei Asia sends no dates. Only its 15 newest entries are taken, and its
+  first fetch is spread 20 minutes apart in feed order. After that, only new links are inserted and they get the fetch time, which is close to
   reality if you open the page a few times a day.
 - **Fetching only happens while you use it.** The server runs from login, but it fetches only when
   the page is opened or refreshed, or every 2 hours while a page stays open (the timer is in the page,
@@ -345,7 +355,7 @@ Georgia and Segoe UI when offline.
   `reader.extract`.
 - **Images in the pop-up** come from the page's own share image (`og:image`). Some, such as The
   Guardian's, have the publisher's logo printed on them.
-- **No authentication.** That's fine on loopback. Don't change `HOST` to `0.0.0.0` without adding
+- **No authentication.** That's fine on loopback, with the host-name and same-origin checks (§5). Don't change `HOST` to `0.0.0.0` without adding
   some.
 - The test-count badge in the README is static.
 
@@ -355,16 +365,18 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-59 tests, all offline (plus 5 live ones, below, that a plain run skips):
+64 tests, all offline (plus 5 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
   (including the real file).
 - [`test_store.py`](../tests/test_store.py): de-duplication, tab queries, wildcard-safe search,
-  flags and counts, prune keeps saved articles, `last_ok` survives an error.
+  flags and counts, prune keeps saved articles, trimmed links aren't stored again (for 14 days),
+  `last_ok` survives an error.
 - [`test_server.py`](../tests/test_server.py): runs the API with a fake fetcher. Covers refresh and
   errors, skipping fresh feeds, flags, input validation, status, serving the page, and the
-  `no-cache` header on the page and its assets (but not on the API).
+  `no-cache` header on the page and its assets (but not on the API), other host names refused, and
+  writes from other sites refused.
 - [`test_highlights.py`](../tests/test_highlights.py): topic sentences beating filler, exact text in
   reading order, short and empty stories, the headline and restated points not picked, sentence
   splitting around abbreviations and quotes, source-name words ignored, plural grouping.
@@ -478,3 +490,7 @@ News Forum/
   cutoff, so it can't fail around midnight.
 - **2026-11-20**: Auto-refresh every 2 hours while the page is open, at the user's request. New stories
   wait behind a "n new stories · Show" bar instead of redrawing the list mid-read.
+- **2026-11-23**: Undated feeds capped at their 15 newest entries (Nikkei Asia had 50 of 239 stored
+  stories). Trimmed links are remembered for 14 days in `pruned_links`, so a feed that still lists them
+  can't bring them back as new. The server now answers only to `127.0.0.1` / `localhost` and refuses
+  `POST`s from other sites (`Origin` ≠ `Host`). 64 tests.

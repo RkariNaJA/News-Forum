@@ -134,3 +134,19 @@ def test_record_fetch_keeps_last_ok_on_error(store):
     store.record_fetch(feed, 0, "boom", now=NOW + timedelta(hours=1))
     st = store.feed_statuses()["F"]
     assert st["error"] == "boom" and st["last_ok"] == NOW.isoformat() and st["last_count"] == 0
+
+
+def test_pruned_links_are_not_added_again(store):
+    # An undated feed (Nikkei Asia) keeps listing old stories; they must not return as new after a prune.
+    store.add_articles([art("https://old/1", hours_ago=24 * 5)], now=NOW)
+    assert store.prune(2, now=NOW) == 1
+    fresh_again = art("https://old/1", hours_ago=0)
+    assert store.add_articles([fresh_again, art("https://new/1")], now=NOW) == 1
+    assert [a["link"] for a in store.list_articles("world", now=NOW)] == ["https://new/1"]
+
+
+def test_pruned_links_are_forgotten_after_two_weeks(store):
+    store.add_articles([art("https://old/1", hours_ago=24 * 5)], now=NOW)
+    store.prune(2, now=NOW)
+    store.prune(2, now=NOW + timedelta(days=15))
+    assert store.add_articles([art("https://old/1", hours_ago=0)], now=NOW) == 1

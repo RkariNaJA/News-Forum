@@ -40,11 +40,18 @@ CREATE TABLE IF NOT EXISTS reader_cache (
     data       TEXT,          -- JSON: paragraphs, author, date, image (when ok)
     error      TEXT
 );
+-- Links trimmed by prune(), so a feed that still lists them (undated ones get a fresh date on every
+-- fetch) can't bring them back as new. Forgotten after FORGET_PRUNED.
+CREATE TABLE IF NOT EXISTS pruned_links (
+    link   TEXT PRIMARY KEY,
+    pruned TEXT NOT NULL
+);
 """
 
 # Columns added after the first release; created on old databases by _migrate().
 EXTRA_COLUMNS = {"author": "TEXT", "tags": "TEXT", "feed_text": "TEXT"}
 READER_RETRY = timedelta(hours=6)   # a failed extraction is retried after this
+FORGET_PRUNED = timedelta(days=14)  # a trimmed link can be stored again after this
 
 LIST_LIMIT = 400
 
@@ -86,7 +93,8 @@ class Store:
     # ---- writes -------------------------------------------------------
     def add_articles(self, articles: list[dict], now: datetime | None = None) -> int:
         """Insert new articles; links already stored keep their row (and read/saved flags).
-        Returns how many were new. Older rows missing the detail fields get them filled in."""
+        Returns how many were new. Older rows missing the detail fields get them filled in.
+        Links trimmed by prune() in the last FORGET_PRUNED are skipped."""
         fetched = (now or _now()).isoformat()
         rows = [(a["link"], a["title"], a.get("summary", ""), a["source"], a["category"],
                  a.get("image"), a["published"], fetched, a.get("author"),
@@ -95,7 +103,9 @@ class Store:
             before = c.total_changes
             c.executemany(
                 "INSERT OR IGNORE INTO articles (link, title, summary, source, category, image,"
-                " published, fetched, author, tags, feed_text) VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
+                " published, fetched, author, tags, feed_text) SELECT ?,?,?,?,?,?,?,?,?,?,?"
+                " WHERE NOT EXISTS (SELECT 1 FROM pruned_links WHERE link=?)",
+                [r + (r[0],) for r in rows])
             new = c.total_changes - before
             c.executemany(
                 "UPDATE articles SET author=?, tags=?, feed_text=?"
@@ -118,11 +128,16 @@ class Store:
             return cur.rowcount
 
     def prune(self, keep_days: int, now: datetime | None = None) -> int:
-        """Delete unsaved articles from before the last keep_days calendar days. Saved ones are kept forever."""
+        """Delete unsaved articles from before the last keep_days calendar days. Saved ones are kept forever.
+        Deleted links are remembered for FORGET_PRUNED so add_articles() won't store them again."""
+        now = now or _now()
         cutoff = keep_cutoff(keep_days, now).isoformat()
         with self._lock, self._conn() as c:
+            c.execute("INSERT OR REPLACE INTO pruned_links (link, pruned)"
+                      " SELECT link, ? FROM articles WHERE saved=0 AND published < ?", (now.isoformat(), cutoff))
             cur = c.execute("DELETE FROM articles WHERE saved=0 AND published < ?", (cutoff,))
             c.execute("DELETE FROM reader_cache WHERE article_id NOT IN (SELECT id FROM articles)")
+            c.execute("DELETE FROM pruned_links WHERE pruned < ?", ((now - FORGET_PRUNED).isoformat(),))
             return cur.rowcount
 
     def record_fetch(self, feed: dict, count: int, error: str | None,

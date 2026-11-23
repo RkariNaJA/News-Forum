@@ -6,6 +6,12 @@ from fastapi.testclient import TestClient
 
 from news.server import create_app
 
+BASE = "http://127.0.0.1:8770"   # the server only answers requests addressed to this PC
+
+
+def local_client(app):
+    return TestClient(app, base_url=BASE)
+
 
 @pytest.fixture
 def setup(tmp_path):
@@ -23,7 +29,7 @@ def setup(tmp_path):
                            "category": "world", "image": None, "published": now}], None),
                 "Broken": ([], "ConnectError: down")}
 
-    client = TestClient(create_app(feeds, tmp_path / "news.db", fetcher=fake_fetch))
+    client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=fake_fetch))
     return client, calls
 
 
@@ -76,7 +82,7 @@ def test_detail_fetches_once_then_uses_cache(tmp_path):
         # The page repeats the headline (with curly quotes) as its first paragraph: the API drops it.
         return {"paragraphs": ["T’1", "Full one.", "Full two."], "author": "Page Author", "date": None, "image": None}
 
-    client = TestClient(create_app(feeds, tmp_path / "news.db", fetcher=lambda todo: {"G": (arts, None)},
+    client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda todo: {"G": (arts, None)},
                                    reader=fake_reader))
     client.post("/api/refresh")
     ids = {a["link"]: a["id"] for a in client.get("/api/articles").json()["articles"]}
@@ -107,7 +113,7 @@ def test_detail_survives_extractor_crash(tmp_path):
     def boom(url):
         raise RuntimeError("parser bug")
 
-    client = TestClient(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {"G": ([art], None)}, reader=boom))
+    client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {"G": ([art], None)}, reader=boom))
     client.post("/api/refresh")
     aid = client.get("/api/articles").json()["articles"][0]["id"]
     r = client.get(f"/api/articles/{aid}/detail")
@@ -137,7 +143,7 @@ def test_stories_older_than_the_window_are_skipped(tmp_path):
               "just outside": cutoff - timedelta(minutes=1), "10 days old": now - timedelta(days=10)}
     arts = [{"link": f"https://g/{i}", "title": t, "summary": "", "source": "G", "category": "world",
              "image": None, "published": ts.isoformat()} for i, (t, ts) in enumerate(stamps.items())]
-    client = TestClient(create_app(feeds, tmp_path / "news.db", fetcher=lambda todo: {"G": (arts, None)}))
+    client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda todo: {"G": (arts, None)}))
     assert client.post("/api/refresh").json()["new"] == 2
     titles = [a["title"] for a in client.get("/api/articles?view=world").json()["articles"]]
     assert titles == ["now", "just inside"]
@@ -148,3 +154,26 @@ def test_page_files_are_revalidated_so_edits_show_on_refresh(setup):
     for path in ("/", "/static/style.css", "/static/app.js"):
         assert client.get(path).headers["cache-control"] == "no-cache"
     assert "cache-control" not in client.get("/api/status").headers
+
+
+def test_requests_for_other_host_names_are_refused(setup):
+    # DNS rebinding: another site's name pointed at 127.0.0.1 must not be able to read the list.
+    client, _ = setup
+    assert client.get("/api/status", headers={"host": "evil.example:8770"}).status_code == 400
+    assert client.get("/api/status", headers={"host": "localhost:8770"}).status_code == 200
+
+
+def test_writes_from_other_sites_are_refused(setup):
+    client, calls = setup
+    client.post("/api/refresh")
+    aid = client.get("/api/articles").json()["articles"][0]["id"]
+    for origin in ("https://evil.example", "http://localhost:3000", "null"):
+        r = client.post(f"/api/articles/{aid}/saved", json={"value": True}, headers={"origin": origin})
+        assert r.status_code == 403
+        assert client.post("/api/refresh?force=true", headers={"origin": origin}).status_code == 403
+    assert client.get("/api/articles?view=saved").json()["articles"] == []
+    assert len(calls) == 1
+    # The page itself (same origin) and tools that send no Origin still work.
+    assert client.post(f"/api/articles/{aid}/saved", json={"value": True},
+                       headers={"origin": BASE}).status_code == 200
+    assert client.post("/api/refresh?force=true").status_code == 200

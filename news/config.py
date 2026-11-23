@@ -8,6 +8,7 @@ WEB_DIR = ROOT / "web"
 
 HOST = "127.0.0.1"
 PORT = 8770
+ALLOWED_HOSTS = ("127.0.0.1", "localhost")   # Host names the server answers to (blocks DNS rebinding)
 
 STALE_MINUTES = 30   # a feed is re-fetched on page open when older than this
 KEEP_DAYS = 2        # calendar days in this PC's time zone: 2 = today and yesterday. Older stories are

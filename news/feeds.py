@@ -67,6 +67,7 @@ def normalize_link(link: str | None) -> str | None:
 
 
 UNDATED_STEP = timedelta(minutes=20)
+UNDATED_MAX = 15   # an undated feed (Nikkei Asia lists 50) would otherwise crowd out its whole tab
 
 
 def _entry_time(entry, now: datetime) -> datetime | None:
@@ -109,8 +110,10 @@ def parse_feed(content: bytes, feed: dict, now: datetime | None = None) -> list[
             continue
         published = _entry_time(entry, now)
         if published is None:
-            # Undated feeds (e.g. Nikkei Asia) list newest first: spread them out in feed
-            # order so a first fetch doesn't stack 50 stories at "just now".
+            # Undated feeds (e.g. Nikkei Asia) list newest first: keep only the newest few, and
+            # spread them out in feed order so a first fetch doesn't stack them all at "just now".
+            if undated >= UNDATED_MAX:
+                continue
             published = now - undated * UNDATED_STEP
             undated += 1
         summary_html = entry.get("summary") or entry.get("description") or ""
