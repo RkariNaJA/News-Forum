@@ -1,10 +1,11 @@
 // News Forum price pages (Crypto Prices / Stock Prices). Loaded before app.js; uses its $ and el helpers at run time.
 // ---- Crypto Prices / Stock Prices: TradingView's free "Market Quotes" widget (prices only, no chart) ----
-// Each page is opened by its own top-right button, not a tab. Symbols are TradingView "EXCHANGE:TICKER" names.
+// Each page is picked from the "Markets" drop-down at the top right (index.html). Symbols are TradingView "EXCHANGE:TICKER" names.
 const PRICE_PAGES = {
-  fedwatch: { button: "#fedwatch-btn", section: "#fedwatch", mount: () => mountFedWatch() },   // fedwatch.js
+  etf: { section: "#etf", mount: () => mountEtf() },                // etf.js
+  fedwatch: { section: "#fedwatch", mount: () => mountFedWatch() },  // fedwatch.js
   prices: {
-    button: "#prices-btn", group: "Crypto",
+    group: "Crypto",
     link: "https://www.tradingview.com/markets/cryptocurrencies/",
     detail: "in US dollars (Binance, against USDT). Change is since the start of the day (UTC).",
     symbols: [
@@ -16,7 +17,7 @@ const PRICE_PAGES = {
     ],
   },
   stocks: {
-    button: "#stocks-btn", group: "Tech stocks",
+    group: "Tech stocks",
     link: "https://www.tradingview.com/markets/stocks-usa/",
     detail: "Gold (XAU/USD, spot, per troy ounce) and US-listed tech stocks, in US dollars. A small D next to a price means it is delayed (free stock data is not real-time). Change is since the previous close; outside US trading hours the last price is shown.",
     symbols: [

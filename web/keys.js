@@ -1,6 +1,6 @@
 // News Forum keyboard shortcuts. Loaded after app.js and uses its state and functions.
 // Shortcuts are off while you type in a box, and in the Source status / shortcuts pop-ups (Esc closes those).
-const TAB_ORDER = [...document.querySelectorAll(".tabs button")].map((b) => b.dataset.view);
+const TAB_ORDER = [...document.querySelectorAll(".tabs [data-view]")].map((b) => b.dataset.view);   // news tabs only
 let currentId = null;   // the story last moved to, so j/k carry on from it after a re-render or the reader
 
 function cards() { return [...document.querySelectorAll("#list .card")]; }

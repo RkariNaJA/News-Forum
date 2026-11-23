@@ -200,6 +200,8 @@ All in [`news/config.py`](../news/config.py) unless noted.
 | `KEEP_DAYS` | `2` | Calendar days kept, in the PC's time zone: 2 = today and yesterday. Older stories are skipped when fetched, and unsaved ones are deleted on every refresh |
 | `CATEGORIES` | world, business, markets, asia, tech | Allowed `category` values in `feeds.json`; also the tab names. `markets` is shown as *Crypto & Investing* and `tech` as *AI* |
 | `FEEDS_PATH` / `DB_PATH` / `WEB_DIR` | `feeds.json`, `data/news.db`, `web/` | Relative to the project folder |
+| `TTL` / `RETRY_AFTER` (etf.py) | `1800 s` / `120 s` | How long SoSoValue's answer is reused, and how long to wait after a failure. One refresh is 2 calls plus one per fund; SoSoValue allows 20 a minute (`MAX_FUNDS` = 17) |
+| `SOSOVALUE_API_KEY` (`.env`) | none | SoSoValue API key for the BTC ETF page: the environment variable wins, else the `SOSOVALUE_API_KEY=` line of `.env` in the project folder (git-ignored; `read_dotenv` in etf.py, no extra package). Read on every request, so adding it needs no restart |
 | `TIMEOUT` (feeds.py) | `20.0` s | Per-request HTTP timeout |
 | `SUMMARY_MAX` (feeds.py) | `320` | Blurb length before truncation |
 | `UNDATED_STEP` (feeds.py) | `20 min` | Spacing for entries with no date |
@@ -234,6 +236,7 @@ that isn't `http(s)`. Names must be unique: they key the status table, and a tes
 | `POST /api/articles/read-all` | `{"ids": [int, ...]}` (≤ 1000) | `{updated, counts}` |
 | `GET /api/counts` | | `{tab: unread}`: the tab badges on their own, without the stories |
 | `GET /api/fedwatch` | | `{next: {date, label, sep, decision}, upcoming: [...], target: {low, high, effr, as_of}, odds: {meeting, outcomes: [{move_bp, low, high, prob}], rate_before, rate_after, anchor, contracts: [{symbol, price, time}]}, errors: {name: message}, cme_url}`; a part that failed is `null` and named in `errors` (calendar, rate or futures) |
+| `GET /api/etf` | | `{funds: [{ticker, name, exchange, date, fee, price, prem_dsc, net_inflow, cum_inflow, net_assets, value_traded}], totals: {date, net_inflow, value_traded, net_assets, cum_inflow}, history: [[date, net_inflow], ...], missing: [ticker], as_of, error, needs_key, key_env, env_file, key_url, source_url}`; fee and `prem_dsc` are ratios (0.0025 = 0.25 %), money in US dollars. With no key, `needs_key` is true and nothing is fetched |
 | `GET /api/feargreed` | | `{current: {date, value, label}, history: [[date, value], ...] oldest first, next_update, error, source_url}`; with nothing cached and alternative.me down, `current` is `null` and `error` says why |
 | `GET /api/status` | | `{feeds: [{name, url, category, last_fetch, last_ok, error, last_count}]}` |
 | `GET /` and `/static/*` | | The page and its assets, sent with `Cache-Control: no-cache` so the browser re-checks them (ETag) on every load |
@@ -266,12 +269,13 @@ connection; writes go through a `threading.Lock` because uvicorn handles request
 
 ## 7. Front end
 
-Plain HTML/CSS/JS, no build step, as five classic scripts that share globals, loaded in this order:
+Plain HTML/CSS/JS, no build step, as six classic scripts that share globals, loaded in this order:
+[`web/etf.js`](../web/etf.js) (the BTC ETF page),
 [`web/fedwatch.js`](../web/fedwatch.js) (the FedWatch page),
 [`web/feargreed.js`](../web/feargreed.js) (the Fear & Greed panel),
 [`web/prices.js`](../web/prices.js) (price pages and the chart pop-up),
 [`web/app.js`](../web/app.js) (everything else) and [`web/keys.js`](../web/keys.js) (keyboard shortcuts).
-`index.html` loads them, and `style.css`, with a version query (`?v=8`). **Raise that number whenever you
+`index.html` loads them, and `style.css`, with a version query (`?v=12`). **Raise that number whenever you
 change a JS or CSS file**, so a browser holding an older copy fetches the new one.
 
 [`web/app.js`](../web/app.js):
@@ -307,18 +311,25 @@ change a JS or CSS file**, so a browser holding an older copy fetches the new on
   *Source status*, which lists problem feeds first, tinted, with when they last worked. The tagline's
   source count comes from the same call.
 - **Crypto Prices** and **Stock Prices** (`view = "prices"` / `"stocks"`, page-only; the API has no such
-  views). Each is opened by its own button at the top right (`#prices-btn`, `#stocks-btn`;
-  `aria-pressed` while open), not a tab. Both hide the list and toolbar and embed TradingView's free
+  views). Each is an item (`#prices-btn`, `#stocks-btn`) in the **Markets** drop-down (see
+  below). Both hide the list and toolbar and embed TradingView's free
   *Market Quotes* widget (`s3.tradingview.com/external-embedding/embed-widget-market-quotes.js`), which
   renders an iframe that updates itself. TradingView has no public price API, so the widget is the
-  supported way. Each page is an entry in `PRICE_PAGES` in `prices.js`: its button, group name, note text
+  supported way. Each page is an entry in `PRICE_PAGES` in `prices.js`: its group name, note text
   and `symbols` as `EXCHANGE:TICKER` names (crypto: Binance USDT pairs; stocks: `NASDAQ:`/`NYSE:`, with spot
   gold `OANDA:XAUUSD` first, then Anthropic `NASDAQ:ANT`, listed 2026-11-19).
   Check a new symbol on tradingview.com first: `BINANCE:TONUSDT` showed "No data". Stock prices are
   delayed in the free widget (a small **D** after the price). The widget is rebuilt when the page or the
   theme changes, because its colours are fixed at creation. Opening a price page still refreshes the
   tab counts.
-- **FedWatch** (`#fedwatch-btn`, left of Crypto Prices) is also a `PRICE_PAGES` entry, but with its own
+- **Markets** (`#markets-toggle`, top right, left of Refresh) opens a drop-down (`#market-tabs`,
+  `.market-pop`, absolutely placed under the button, right-aligned) with the four market pages: BTC ETF,
+  FedWatch, Crypto Prices, Stock Prices. `setMarketsOpen` in `app.js` shows or hides it and sets
+  `aria-expanded`; picking an item calls `selectTab` and closes it, as do Esc (focus goes back to the
+  button) and any click outside `.markets-menu`. `selectTab` sets `aria-pressed` on the item of the open
+  page and the class `on` on the button, which turns it dark like a pressed `.btn`. The items carry
+  `data-view` but sit outside `.tabs`, so `←`/`→` and the number keys still cycle the news tabs only.
+- **FedWatch** (`#fedwatch-btn`, in the Markets menu) is also a `PRICE_PAGES` entry, but with its own
   `section` (`#fedwatch`) and a `mount` function (`mountFedWatch` in `fedwatch.js`) instead of a
   TradingView table. It reads `GET /api/fedwatch` (reused for 5 minutes in the page), shows the next
   decision in ET and in the PC's time, a days/hours/min/sec countdown that ticks only while the page is
@@ -334,6 +345,14 @@ change a JS or CSS file**, so a browser holding an older copy fetches the new on
   green (`#008c70` light, `#10a896` dark): the site's `--business` green sat too close to the red for
   deuteranopes (OKLab Delta E 6.7 against a target of 8), the new ones measure 11.6 and 9.7. Every colour
   also has its label beside it.
+- **BTC ETF** (`#etf-btn`, first in the Markets menu) is a `PRICE_PAGES` entry with its own `section` (`#etf`) and
+  `mount` (`mountEtf` in `etf.js`), like FedWatch; `selectTab` shows the section of whichever such page is
+  open and hides the rest. It reads `GET /api/etf` (reused for 10 minutes in the page; at once again if
+  the last try had no key or failed): four cards with the day's totals and a table of the funds, largest
+  first. Ratios from the server (fee, premium / discount) are shown as percents. Inflows are coloured
+  (`--greed-strong` in, `--accent` out) and always carry a + or − sign, so colour is never the only cue.
+  A fund with no figures this time is listed with dashes and named in the note above. With no key, the
+  `#etf-setup` card gives the steps, with the `.env` file's full path.
 
 ### FedWatch odds (`news/fedwatch.py`)
 
@@ -391,6 +410,10 @@ Georgia and Segoe UI when offline.
 - **Dead feeds.** NHK World's English RSS address returned 404 when this was built, so it is not in
   the list. The masthead dot turns red when a feed fails; click it (or *Source status* in the footer)
   to see which.
+- **BTC ETF figures come from SoSoValue, not CoinGlass.** CoinGlass fills its page from a private API.
+  SoSoValue's docs don't state the units of `sponsor_fee` and `prem_dsc`; they are read as ratios
+  (0.0025 = 0.25 %), which matches the example values. If the fee column shows 25.00 %, they are percents
+  and the page should stop multiplying by 100. Flows and net assets settle a day late (T+1).
 - **FedWatch odds are worked out here, not taken from CME.** They follow CME's method but use delayed
   Yahoo quotes and today's EFFR, so they can differ a little from CME's page. Yahoo's chart API is
   unofficial and could change; then the page says the futures are missing and still shows the
@@ -418,7 +441,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-91 tests, all offline (plus 5 live ones, below, that a plain run skips):
+101 tests, all offline (plus 5 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -445,6 +468,10 @@ py -3.13 -m pytest -q
   meetings, `*`, 2:00 pm ET in winter and summer), contract symbols, the odds split, each way of
   anchoring the rates (month before, month after, last-day meeting, today's rate), caching, skipping
   past meetings, a failing source, and falling back to the last good answer. All sources are faked.
+- [`test_etf.py`](../tests/test_etf.py): the table built from faked SoSoValue answers (largest fund
+  first, string numbers, dates as text or millisecond timestamps, a fund with no figures), a refused key,
+  the rate limit, a changed fund list, the `{code, data}` wrapper, the key from `.env` or the environment,
+  no fetch without a key, the 30-minute cache, the wait after a failure, and keeping the last answer.
 - [`test_feargreed.py`](../tests/test_feargreed.py): history ordered oldest first, today's value and
   label, the next-update time, changed or empty data rejected, the hour-long cache, and the last answer
   kept when a later fetch fails.
@@ -485,10 +512,11 @@ News Forum/
 ├── Start News Forum.bat     ← launcher (py -3.13 -m news)
 ├── feeds.json               ← source list
 ├── requirements.txt
-├── .gitignore               ← data/*.db, data/*.log, caches
+├── .gitignore               ← .env, data/*.db, data/*.log, caches
 ├── news/
 │   ├── __main__.py          ← entry point: --no-browser, single instance, log file, uvicorn
 │   ├── config.py            ← settings
+│   ├── etf.py               ← BTC ETF page: US spot Bitcoin ETFs (SoSoValue), cached
 │   ├── feargreed.py         ← Crypto Fear & Greed Index (alternative.me), cached
 │   ├── fedwatch.py          ← FedWatch page: FOMC calendar, target range, futures, odds
 │   ├── feeds.py             ← fetch + parse
@@ -496,7 +524,7 @@ News Forum/
 │   ├── reader.py            ← reader view: safe page download + story extraction
 │   ├── store.py             ← SQLite (articles, feed status, reader cache)
 │   └── server.py            ← FastAPI routes
-├── web/                     ← index.html, style.css, fedwatch.js, feargreed.js, prices.js, app.js, keys.js
+├── web/                     ← index.html, style.css, etf.js, fedwatch.js, feargreed.js, prices.js, app.js, keys.js
 ├── Pic/                     ← README screenshots
 ├── data/                    ← news.db + news-forum.log, created on first run (git-ignored)
 └── tests/                   ← conftest.py, test_*.py, fixtures/
@@ -573,3 +601,14 @@ News Forum/
   from Feb 2018) with a hover readout. TradingView has no such symbol, so `news/feargreed.py` reads
   alternative.me's free API; `GET /api/feargreed`. New `--greed-strong` colour, checked with the
   palette validator for colour-blind separation. Page files now `?v=8`. 91 tests.
+- **2026-11-23**: **BTC ETF** button, left of FedWatch, at the user's request: the US spot Bitcoin ETFs
+  in a table like CoinGlass's (fee, price, premium / discount, daily and total net inflow, net assets,
+  value traded) with the day's totals. CoinGlass's table comes from a private API, so at the user's
+  choice `news/etf.py` reads SoSoValue's API with a free key (`SOSOVALUE_API_KEY` in `.env`,
+  git-ignored, or the environment); `GET /api/etf`. `selectTab` now shows any page's own section generically.
+  Checked in the browser against faked data only, as no key was set up yet. Page files `?v=10`. 101 tests.
+- **2026-11-23**: the four market page buttons (BTC ETF, FedWatch, Crypto Prices, Stock Prices) left the
+  masthead, which had grown crowded (three rows on a phone), into one **Markets ▾** drop-down at the top
+  right, at the user's request (hidden until wanted). A fold-out group at the end of the tab row was tried
+  first; the user preferred the top right. The SoSoValue key now lives in `.env` (`SOSOVALUE_API_KEY=`,
+  git-ignored) instead of `data/sosovalue.key`. Page files `?v=12`.

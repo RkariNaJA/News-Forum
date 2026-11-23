@@ -14,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field
 
 from . import config
+from .etf import BtcEtf
 from .feargreed import FearGreed
 from .fedwatch import FedWatch
 from .feeds import fetch_all, load_feeds
@@ -35,11 +36,12 @@ class IdsBody(BaseModel):
 def create_app(feeds_path: Path, db_path: Path,
                fetcher: Callable[[list[dict]], dict] = fetch_all,
                reader: Callable[[str], dict] = read_article, fedwatch: FedWatch | None = None,
-               feargreed: FearGreed | None = None) -> FastAPI:
+               feargreed: FearGreed | None = None, etf: BtcEtf | None = None) -> FastAPI:
     app = FastAPI(title="News Forum")
     store = Store(db_path)
     fedwatch = fedwatch or FedWatch()
     feargreed = feargreed or FearGreed()
+    etf = etf or BtcEtf()
     refresh_lock = threading.Lock()
     corpus_cache: dict = {"state": None, "corpus": None}
     corpus_lock = threading.Lock()
@@ -161,6 +163,11 @@ def create_app(feeds_path: Path, db_path: Path,
     def fear_greed():
         """Crypto Fear & Greed Index: today's value and the daily history (alternative.me)."""
         return feargreed.snapshot()
+
+    @app.get("/api/etf")
+    def btc_etf():
+        """US spot Bitcoin ETFs: each fund's latest figures and the daily totals (SoSoValue, needs a key)."""
+        return etf.snapshot()
 
     @app.get("/")
     def index():

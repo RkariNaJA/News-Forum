@@ -249,8 +249,8 @@ function renderSources() {
 }
 
 function renderCounts(counts) {
-  document.querySelectorAll(".tabs button").forEach((b) => {
-    const badge = b.querySelector(".count");     // every news tab has one
+  document.querySelectorAll(".tabs [data-view]").forEach((b) => {
+    const badge = b.querySelector(".count");     // every news tab has one; market tabs don't
     const n = counts[b.dataset.view] || 0;
     if (badge) badge.textContent = n ? String(n) : "";
   });
@@ -371,16 +371,28 @@ async function showStatus() {
 function selectTab(view) {
   state.view = view;
   store("view", view);
-  document.querySelectorAll(".tabs button").forEach((b) =>
+  document.querySelectorAll(".tabs [data-view]").forEach((b) =>
     b.setAttribute("aria-selected", String(b.dataset.view === view)));
   const prices = view in PRICE_PAGES;
-  for (const [v, page] of Object.entries(PRICE_PAGES)) $(page.button).setAttribute("aria-pressed", String(v === view));
+  document.querySelectorAll("#market-tabs [data-view]").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  $("#markets-toggle").classList.toggle("on", prices);   // dark while a market page is open
   for (const id of ["#list", ".toolbar"]) $(id).hidden = prices;
   if (prices) $("#empty").hidden = true;
   $("#prices").hidden = !prices || Boolean(PRICE_PAGES[view].section);
-  $("#fedwatch").hidden = view !== "fedwatch";
+  for (const [v, page] of Object.entries(PRICE_PAGES)) if (page.section) $(page.section).hidden = v !== view;
   if (prices) mountPrices(view);
   load();
+}
+
+// The market pages (BTC ETF, FedWatch, Crypto Prices, Stock Prices) are in a drop-down under "Markets" at
+// the top right. It closes when a page is picked, on a click elsewhere, and on Esc.
+function setMarketsOpen(open) {
+  const menu = $("#market-tabs");
+  if (menu.hidden === !open) return;
+  menu.hidden = !open;
+  $("#markets-toggle").setAttribute("aria-expanded", String(open));
+  if (open) (menu.querySelector('[aria-pressed="true"]') || menu.firstElementChild).focus();
 }
 
 function applyTheme(t) {
@@ -395,9 +407,19 @@ function init() {
   state.hideRead = store("hideRead") === "1";
   $("#hide-read").checked = state.hideRead;
 
-  document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => selectTab(b.dataset.view)));
+  document.querySelectorAll(".tabs [data-view]").forEach((b) => b.addEventListener("click", () => selectTab(b.dataset.view)));
+  $("#markets-toggle").addEventListener("click", () => setMarketsOpen($("#market-tabs").hidden));
+  document.querySelectorAll("#market-tabs [data-view]").forEach((b) => b.addEventListener("click", () => {
+    setMarketsOpen(false);
+    selectTab(b.dataset.view);
+  }));
+  document.addEventListener("click", (e) => { if (!e.target.closest(".markets-menu")) setMarketsOpen(false); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || $("#market-tabs").hidden) return;
+    setMarketsOpen(false);
+    $("#markets-toggle").focus();
+  });
   $("#refresh").addEventListener("click", () => refresh(true));
-  for (const [v, page] of Object.entries(PRICE_PAGES)) $(page.button).addEventListener("click", () => selectTab(v));
   $("#theme").addEventListener("click", () => {
     const dark = matchMedia("(prefers-color-scheme: dark)").matches;
     const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");

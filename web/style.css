@@ -66,6 +66,26 @@ code { font-size: 0.9em; }
 .dateline { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
 .masthead-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .masthead-actions .btn { white-space: nowrap; }
+/* ---- Markets drop-down (top right): BTC ETF, FedWatch, Crypto Prices, Stock Prices ---- */
+.markets-menu { position: relative; }
+#markets-toggle .chev { display: inline-block; font-size: 11px; margin-left: 2px; transition: transform .2s; }
+#markets-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+#markets-toggle.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.market-pop {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 180px; padding: 6px;
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+  animation: pop-in .15s ease-out;
+}
+.market-pop[hidden] { display: none; }
+.market-pop button {
+  border: 0; background: none; padding: 8px 12px; border-radius: 6px; text-align: left; cursor: pointer;
+  font: inherit; font-size: 14px; color: var(--ink); white-space: nowrap;
+}
+.market-pop button:hover, .market-pop button:focus-visible { background: var(--bg); outline: none; }
+.market-pop button[aria-pressed="true"] { background: var(--ink); color: var(--paper); font-weight: 600; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .market-pop { animation: none; } #markets-toggle .chev { transition: none; } }
 .title { font-family: var(--serif); font-weight: 700; font-size: clamp(40px, 7vw, 68px); line-height: 1; margin: 14px 0 6px; letter-spacing: -.01em; }
 .tagline { margin: 0; font-family: var(--serif); font-style: italic; color: var(--ink-soft); }
 .muted { color: var(--muted); font-size: 13px; }
@@ -257,6 +277,24 @@ dialog.chart-dialog[open] { display: flex; flex-direction: column; gap: 10px; }
   .fw-cell { min-width: 0; flex: 1; }
   .fw-cell strong { font-size: 24px; }
 }
+
+/* ---- BTC ETF: US spot Bitcoin ETF table ---- */
+.etf { padding: 18px 0 0; max-width: 1100px; margin: 0 auto; }
+.etf a { color: inherit; }
+.etf-steps { font-size: 14px; line-height: 1.6; padding-left: 20px; margin: 8px 0 0; }
+.etf-steps code { overflow-wrap: anywhere; }
+.etf-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 6px 0 14px; }
+.etf-stat { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; }
+.etf-stat strong { font-family: var(--serif); font-size: 26px; font-variant-numeric: tabular-nums; }
+.etf-scroll { overflow-x: auto; margin-top: 8px; }
+.etf-table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
+.etf-table th { font-size: 12px; font-weight: 600; color: var(--ink-soft); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--ink); }
+.etf-table td { padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+.etf-table tbody tr:hover { background: var(--bg); }
+.etf-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.etf-ticker { font-weight: 700; }
+.etf-name { color: var(--ink-soft); white-space: normal; min-width: 180px; }
+.etf-in { color: var(--greed-strong); } .etf-out { color: var(--accent); }
 
 /* ---- Crypto Fear & Greed Index (Crypto Prices page): red = fear, grey = neutral, green = greed ---- */
 .fng { margin-top: 18px; }

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=8">
+  <link rel="stylesheet" href="/static/style.css?v=12">
   <meta name="referrer" content="no-referrer">
 </head>
 <body>
@@ -18,9 +18,16 @@
       <div class="masthead-actions">
         <span id="updated" class="muted"></span>
         <button id="health" class="health" type="button" hidden></button>
-        <button id="fedwatch-btn" class="btn" type="button" aria-pressed="false" title="Countdown to the next FOMC decision and the market's rate odds">FedWatch</button>
-        <button id="prices-btn" class="btn" type="button" aria-pressed="false" title="Live crypto prices">Crypto Prices</button>
-        <button id="stocks-btn" class="btn" type="button" aria-pressed="false" title="Live tech stock prices">Stock Prices</button>
+        <div class="markets-menu">
+          <button id="markets-toggle" class="btn" type="button" aria-expanded="false" aria-controls="market-tabs"
+            title="Market pages: BTC ETF, FedWatch, Crypto Prices, Stock Prices">Markets <span class="chev" aria-hidden="true">▾</span></button>
+          <div id="market-tabs" class="market-pop" hidden>
+            <button id="etf-btn" type="button" data-view="etf" aria-pressed="false" title="US spot Bitcoin ETFs: flows, net assets and prices">BTC ETF</button>
+            <button id="fedwatch-btn" type="button" data-view="fedwatch" aria-pressed="false" title="Countdown to the next FOMC decision and the market's rate odds">FedWatch</button>
+            <button id="prices-btn" type="button" data-view="prices" aria-pressed="false" title="Live crypto prices and the Fear &amp; Greed Index">Crypto Prices</button>
+            <button id="stocks-btn" type="button" data-view="stocks" aria-pressed="false" title="Live tech stock prices">Stock Prices</button>
+          </div>
+        </div>
         <button id="refresh" class="btn" type="button" title="Fetch the latest news from every source">Refresh</button>
         <button id="theme" class="btn icon" type="button" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
       </div>
@@ -104,6 +111,37 @@
       meeting dates from the Federal Reserve. They can differ a little from CME's own figures.</p>
     <p><a id="fw-cme" class="btn" target="_blank" rel="noopener noreferrer">Open CME FedWatch ↗</a></p>
   </section>
+  <section id="etf" class="etf" hidden>
+    <div id="etf-status" class="alert" hidden></div>
+    <div id="etf-setup" class="fw-card" hidden>
+      <h3 class="fw-heading">One-time setup: a free SoSoValue API key</h3>
+      <p class="muted">CoinGlass doesn't let other sites read its ETF table, so this page uses SoSoValue's free API.</p>
+      <ol class="etf-steps">
+        <li>Sign in at <a id="etf-key-link" target="_blank" rel="noopener noreferrer">sosovalue.com/developer</a> and click <b>Apply your Key</b>; the key shows on that page once approved.</li>
+        <li>Open the file <code id="etf-key-file"></code> and paste the key after <code><span id="etf-key-env"></span>=</code>, then save.</li>
+        <li>Open this page again. No restart is needed.</li>
+      </ol>
+    </div>
+    <div id="etf-body" hidden>
+      <p id="etf-totals-date" class="fw-kicker"></p>
+      <div id="etf-totals" class="etf-totals"></div>
+      <div class="fw-card etf-card">
+        <h3 class="fw-heading">US spot Bitcoin ETFs</h3>
+        <p id="etf-date" class="muted"></p>
+        <div class="etf-scroll">
+          <table class="etf-table">
+            <thead><tr><th class="num">#</th><th>Ticker</th><th>Fund</th><th class="num">Fee</th><th class="num">Price</th>
+              <th class="num" title="Market price against the fund's net asset value per share">Premium / discount</th>
+              <th class="num">Daily net inflow</th><th class="num">Total net inflow</th><th class="num">Net assets</th>
+              <th class="num">Value traded</th></tr></thead>
+            <tbody id="etf-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="muted prices-note">Data from <a id="etf-source" target="_blank" rel="noopener noreferrer">SoSoValue</a>, refreshed
+      every 30 minutes. Inflows are in US dollars; green with + is money in, red with − is money out. Largest fund first.</p>
+  </section>
   <p id="empty" class="empty" hidden></p>
 
   <footer class="footer">
@@ -168,10 +206,11 @@
     </div>
   </dialog>
 
-  <script src="/static/fedwatch.js?v=8"></script>
-  <script src="/static/feargreed.js?v=8"></script>
-  <script src="/static/prices.js?v=8"></script>
-  <script src="/static/app.js?v=8"></script>
-  <script src="/static/keys.js?v=8"></script>
+  <script src="/static/etf.js?v=12"></script>
+  <script src="/static/fedwatch.js?v=12"></script>
+  <script src="/static/feargreed.js?v=12"></script>
+  <script src="/static/prices.js?v=12"></script>
+  <script src="/static/app.js?v=12"></script>
+  <script src="/static/keys.js?v=12"></script>
 </body>
 </html>

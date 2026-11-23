@@ -212,3 +212,13 @@ def test_feargreed_endpoint_returns_the_snapshot(tmp_path):
     feeds.write_text(json.dumps({"feeds": []}), encoding="utf-8")
     client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {}, feargreed=FakeIndex()))
     assert client.get("/api/feargreed").json()["current"]["value"] == 11
+
+
+def test_etf_endpoint_returns_the_snapshot(tmp_path):
+    class FakeEtf:
+        def snapshot(self):
+            return {"funds": [{"ticker": "IBIT"}], "totals": None, "needs_key": False, "error": None}
+    feeds = tmp_path / "feeds.json"
+    feeds.write_text(json.dumps({"feeds": []}), encoding="utf-8")
+    client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {}, etf=FakeEtf()))
+    assert client.get("/api/etf").json()["funds"][0]["ticker"] == "IBIT"

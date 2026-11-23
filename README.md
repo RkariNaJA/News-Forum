@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black" alt="Vanilla JavaScript">
   <img src="https://img.shields.io/badge/RSS-25%20feeds-FFA500?logo=rss&logoColor=white" alt="RSS: 25 feeds">
-  <img src="https://img.shields.io/badge/tests-91%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 91 passing">
+  <img src="https://img.shields.io/badge/tests-101%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 101 passing">
   <img src="https://img.shields.io/badge/runs-localhost%20only-555555" alt="runs on localhost only">
 </p>
 
@@ -62,9 +62,11 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 | **World** | BBC World · Al Jazeera · DW · The Guardian · NPR · France 24 |
 | **Business** | BBC Business · CNBC · Guardian Business |
 | **Crypto & Investing** | CoinDesk · Cointelegraph · Decrypt · CNBC Markets · CNBC Investing · Guardian Money |
-| **FedWatch** (button, top right) | A countdown to the next FOMC rate decision (2:00 pm ET, also shown in your time) and a bar chart of the market's odds for each outcome, plus the later meeting dates. CME doesn't allow its own FedWatch tool to be embedded, so the odds are worked out on your PC with CME's published method from CBOT 30-Day Fed Funds futures (delayed quotes via Yahoo Finance). They are close to CME's figures but not identical; **Open CME FedWatch ↗** opens the real one |
-| **Crypto Prices** (button, top right) | A live price table for 14 coins (Bitcoin, Ethereum, BNB, Solana, XRP… Optimism (OP), Arbitrum (ARB)) in US dollars: price, change, change %, open, high, low. Click any row for a day chart (daily candles) in a pop-up. It's TradingView's free *Market Quotes* widget, so this tab needs internet and loads from tradingview.com. Below the table: the **Crypto Fear & Greed Index** (0 = extreme fear, 100 = extreme greed) with today's value, yesterday / last week / last month, and a history chart (30D, 90D, 1Y, All, back to 2018) with a hover readout. TradingView has no Fear & Greed symbol, so it comes from alternative.me's free API |
-| **Stock Prices** (button, top right) | The same price-only table for gold (XAU/USD, live) on top, then 15 US-listed tech stocks: Anthropic (ANT), Apple, Microsoft, Nvidia, Alphabet, Amazon, Meta, Tesla, Broadcom, TSMC, AMD, Oracle, Netflix, ASML, Intel. Free stock data from TradingView is delayed (marked with a small **D**); gold is not. Rows open the same day-chart pop-up |
+| **Markets ▾** (button, top right) | Opens a short menu of the four market pages: BTC ETF, FedWatch, Crypto Prices and Stock Prices. Picking one opens it and closes the menu; Esc or a click elsewhere closes it too. The button turns dark while a market page is open, and the menu marks which one |
+| **BTC ETF** (Markets menu) | The US spot Bitcoin ETFs in one table, like CoinGlass's ETF page: fee, price, premium / discount, daily and total net inflow, net assets and value traded for each fund, largest first, with the day's totals above it. CoinGlass doesn't let other sites read its table, so the figures come from SoSoValue's API, which needs a free key (see *Running it*). Flows settle a day late |
+| **FedWatch** (Markets menu) | A countdown to the next FOMC rate decision (2:00 pm ET, also shown in your time) and a bar chart of the market's odds for each outcome, plus the later meeting dates. CME doesn't allow its own FedWatch tool to be embedded, so the odds are worked out on your PC with CME's published method from CBOT 30-Day Fed Funds futures (delayed quotes via Yahoo Finance). They are close to CME's figures but not identical; **Open CME FedWatch ↗** opens the real one |
+| **Crypto Prices** (Markets menu) | A live price table for 14 coins (Bitcoin, Ethereum, BNB, Solana, XRP… Optimism (OP), Arbitrum (ARB)) in US dollars: price, change, change %, open, high, low. Click any row for a day chart (daily candles) in a pop-up. It's TradingView's free *Market Quotes* widget, so this tab needs internet and loads from tradingview.com. Below the table: the **Crypto Fear & Greed Index** (0 = extreme fear, 100 = extreme greed) with today's value, yesterday / last week / last month, and a history chart (30D, 90D, 1Y, All, back to 2018) with a hover readout. TradingView has no Fear & Greed symbol, so it comes from alternative.me's free API |
+| **Stock Prices** (Markets menu) | The same price-only table for gold (XAU/USD, live) on top, then 15 US-listed tech stocks: Anthropic (ANT), Apple, Microsoft, Nvidia, Alphabet, Amazon, Meta, Tesla, Broadcom, TSMC, AMD, Oracle, Netflix, ASML, Intel. Free stock data from TradingView is delayed (marked with a small **D**); gold is not. Rows open the same day-chart pop-up |
 | **Asia** | CNA · Nikkei Asia · Bangkok Post · The Diplomat · BBC Asia |
 | **AI** | The Verge AI · The Decoder · MIT Tech Review AI · Guardian AI · Wired AI |
 | **Saved** | Stories you starred, kept until you un-star them |
@@ -72,7 +74,7 @@ News Forum pulls the headlines from all of those outlets into one list and gets 
 <p align="center">
   <img src="Pic/Screenshot%202026-11-16%20160319.png" alt="Crypto Prices view: a TradingView price table with value, change, change %, open, high, low and previous close for each coin" width="900">
 </p>
-<sub><b>Crypto Prices</b> (the dark button at the top right): live prices only, no charts. Taken before OP and ARB were added to the list.</sub>
+<sub><b>Crypto Prices</b> (now under the <b>Markets ▾</b> menu at the top right): live prices only, no charts. Taken before OP and ARB were added to the list.</sub>
 
 <p align="center">
   <img src="Pic/Screenshot%202026-11-16%20161738.png" alt="Stock Prices view: gold (XAU/USD) on top, then Apple, Microsoft, Nvidia and other US tech stocks with value, change, open, high, low and previous close" width="900">
@@ -136,6 +138,11 @@ runs: a second launch sees the first and steps aside. Details, plus how to stop 
 > ⚠️ **Publishers move their feeds.** If a source shows an error in *Source status* for days, its
 > URL in `feeds.json` has probably changed.
 
+**BTC ETF key (once):** sign in at <https://sosovalue.com/developer/dashboard>, click *Apply your Key*,
+and paste it after `SOSOVALUE_API_KEY=` in the `.env` file in this folder (git-ignored, so the key is
+never committed; the environment variable of the same name also works). Until then the BTC ETF page
+shows these steps. No restart is needed.
+
 To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a section: `world`,
 `business`, `markets`, `asia` or `tech` for the AI tab) and restart.
 
@@ -147,15 +154,17 @@ To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a sec
 | [`news/store.py`](news/store.py) | SQLite: articles (unique by link) and per-source fetch status; tab queries, search, read/saved flags, trim to today and yesterday |
 | [`news/reader.py`](news/reader.py) | Reader view: fetches one article page (public web addresses only, checked after the name is looked up) and extracts the story as plain paragraphs with trafilatura |
 | [`news/highlights.py`](news/highlights.py) | Key sentences for the pop-up: sentences carrying the story's distinctive words (TF-IDF over all stored stories), without AI |
-| [`news/server.py`](news/server.py) | FastAPI app: `/api/refresh`, `/api/articles`, `/api/articles/{id}/detail`, `/api/status`, `/api/fedwatch`, `/api/feargreed`, read/save endpoints, serves the page |
+| [`news/server.py`](news/server.py) | FastAPI app: `/api/refresh`, `/api/articles`, `/api/articles/{id}/detail`, `/api/status`, `/api/fedwatch`, `/api/feargreed`, `/api/etf`, read/save endpoints, serves the page |
 | [`news/fedwatch.py`](news/fedwatch.py) | FedWatch page: FOMC dates from the Fed's calendar, today's target range from the New York Fed, futures quotes, and the odds (CME's method), each cached for a while |
+| [`news/etf.py`](news/etf.py) | BTC ETF page: the fund list, each fund's latest figures and the daily totals from SoSoValue, cached for 30 minutes |
 | [`news/feargreed.py`](news/feargreed.py) | Crypto Fear & Greed Index from alternative.me (today and the full daily history), cached for an hour |
 | [`news/config.py`](news/config.py) | Port, paths, the 30-minute freshness window and the 2-day (today and yesterday) window |
 | [`web/app.js`](web/app.js) | The page: tabs, cards, search, filters, theme. All feed text goes in via `textContent`, never `innerHTML` |
 | [`web/fedwatch.js`](web/fedwatch.js) | The FedWatch page: countdown, odds bars, later meetings |
+| [`web/etf.js`](web/etf.js) | The BTC ETF page: the totals cards and the fund table |
 | [`web/feargreed.js`](web/feargreed.js) | The Fear & Greed panel on Crypto Prices: today's reading, the 0-100 scale and the history chart |
 | [`web/style.css`](web/style.css) | Newspaper look, light and dark palettes |
-| [`tests/`](tests/) | 91 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
+| [`tests/`](tests/) | 101 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
 
 ## Documentation
 
