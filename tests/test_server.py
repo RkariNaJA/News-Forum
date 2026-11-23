@@ -177,3 +177,17 @@ def test_writes_from_other_sites_are_refused(setup):
     assert client.post(f"/api/articles/{aid}/saved", json={"value": True},
                        headers={"origin": BASE}).status_code == 200
     assert client.post("/api/refresh?force=true").status_code == 200
+
+
+def test_flag_changes_return_fresh_counts(setup):
+    client, _ = setup
+    client.post("/api/refresh")
+    aid = client.get("/api/articles").json()["articles"][0]["id"]
+    assert client.get("/api/counts").json()["today"] == 1
+    r = client.post(f"/api/articles/{aid}/read", json={"value": True}).json()
+    assert r["ok"] and r["counts"]["today"] == 0 and r["counts"].get("world", 0) == 0   # empty tabs are left out
+    r = client.post(f"/api/articles/{aid}/saved", json={"value": True}).json()
+    assert r["counts"]["saved"] == 1
+    client.post(f"/api/articles/{aid}/read", json={"value": False})
+    r = client.post("/api/articles/read-all", json={"ids": [aid]}).json()
+    assert r["updated"] == 1 and r["counts"]["today"] == 0

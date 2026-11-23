@@ -102,13 +102,15 @@ Clicking a card anywhere except the headline link or its buttons calls `openRead
 2. `GET /api/articles/{id}/detail` returns the stored article (author, tags, full feed text) and the
    reader result.
 3. **Cache first.** `reader_cache` holds one row per article. A success is kept for good (until the
-   3-day trim removes the article). A failure is kept for `READER_RETRY` (6 h), so a blocked site
+   daily trim removes the article). A failure is kept for `READER_RETRY` (6 h), so a blocked site
    isn't hit on every click. `?retry=true` (the pop-up's *Try again* link) refetches a cached
    failure.
 4. On a cache miss, [`reader.read_article`](../news/reader.py) runs:
    - **`check_url`** allows only `http(s)` addresses that aren't local. It refuses `localhost`,
      `*.local` and any IP that is not globally routable (127.x, 10.x, 192.168.x, ::1 and so on).
-     It runs as an httpx **request hook**, so **every redirect hop** is checked, not just the first
+     A host name is looked up first (`_resolve`), and refused if **any** address it points to is
+     local, so a public name set to `127.0.0.1` (e.g. `localtest.me`) can't reach this PC. A name
+     that can't be found gives "Couldn't find the site". It runs as an httpx **request hook**, so **every redirect hop** is checked, not just the first
      link.
    - **`download`** uses a browser User-Agent, a 20 s timeout and at most 5 redirects, and streams
      the page with a 5 MB cap. The status codes 401/402/403/405/429/451 become "The site refused the
@@ -226,17 +228,18 @@ that isn't `http(s)`. Names must be unique: they key the status table, and a tes
 |---|---|---|
 | `POST /api/refresh` | `?force=true\|false` | `{busy, fetched, new, pruned, errors: {name: message}}` |
 | `GET /api/articles` | `?view=today\|world\|business\|markets\|asia\|tech\|saved&q=` (q ≤ 100 chars) | `{view, articles: [...], counts: {tab: unread}}`; an unknown view gives 400 |
-| `POST /api/articles/{id}/read` | `{"value": bool}` | `{ok}`, or 404 for an unknown id |
-| `POST /api/articles/{id}/saved` | `{"value": bool}` | `{ok}`, or 404 for an unknown id |
+| `POST /api/articles/{id}/read` | `{"value": bool}` | `{ok, counts}`, or 404 for an unknown id |
+| `POST /api/articles/{id}/saved` | `{"value": bool}` | `{ok, counts}`, or 404 for an unknown id |
 | `GET /api/articles/{id}/detail` | `?retry=true` refetches a cached failure | `{article: {...all fields, tags: [...]}, feed_text: [paragraphs], reader: {ok: true, paragraphs, author, date, image} or {ok: false, error}, highlights: [sentences]}`; 404 for an unknown id |
-| `POST /api/articles/read-all` | `{"ids": [int, ...]}` (≤ 1000) | `{updated}` |
+| `POST /api/articles/read-all` | `{"ids": [int, ...]}` (≤ 1000) | `{updated, counts}` |
+| `GET /api/counts` | | `{tab: unread}`: the tab badges on their own, without the stories |
 | `GET /api/status` | | `{feeds: [{name, url, category, last_fetch, last_ok, error, last_count}]}` |
 | `GET /` and `/static/*` | | The page and its assets, sent with `Cache-Control: no-cache` so the browser re-checks them (ETag) on every load |
 
 **Same-origin writes.** A `POST` whose `Origin` header doesn't match its `Host` gets 403, so another
 site open in the browser can't save, mark or refresh. Requests with no `Origin` (curl, scripts) pass.
 
-`today` means published in the last 24 hours, across all sections. `counts.saved` is the total
+`today` means published in the last 24 hours, across all sections. A tab with no unread stories is left out of `counts`. `counts.saved` is the total
 saved, not unread. Search is a case-insensitive `LIKE` on title and summary, with `%`, `_` and `\`
 escaped so they match literally.
 
@@ -275,7 +278,8 @@ change a JS or CSS file**, so a browser holding an older copy fetches the new on
 - Saves per-browser preferences in `localStorage`: `view` (last tab), `theme`, `hideRead`, `highlights`,
   `lastRefresh` (drives the "Updated … ago" label). All reads and writes are wrapped, so a blocked
   storage still renders the page.
-- Updates read/saved state optimistically, then refreshes the counts from the server.
+- Updates read/saved state optimistically, then shows the tab counts that come back with the reply
+  (no second request).
 - **Auto-refresh.** A one-minute timer (the same one that updates "Updated … ago") calls
   `autoRefreshIfDue()`, and so does the tab becoming visible again. Once `AUTO_REFRESH_MS` (2 h) has
   passed since the last refresh, it calls `refresh(false, auto = true)`. Checking every minute instead
@@ -365,7 +369,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-64 tests, all offline (plus 5 live ones, below, that a plain run skips):
+71 tests, all offline (plus 5 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -376,14 +380,15 @@ py -3.13 -m pytest -q
 - [`test_server.py`](../tests/test_server.py): runs the API with a fake fetcher. Covers refresh and
   errors, skipping fresh feeds, flags, input validation, status, serving the page, and the
   `no-cache` header on the page and its assets (but not on the API), other host names refused, and
-  writes from other sites refused.
+  writes from other sites refused, and read/save replies carrying fresh tab counts.
 - [`test_highlights.py`](../tests/test_highlights.py): topic sentences beating filler, exact text in
   reading order, short and empty stories, the headline and restated points not picked, sentence
   splitting around abbreviations and quotes, source-name words ignored, plural grouping.
 - [`test_reader.py`](../tests/test_reader.py): story extraction from a sample article page (no
   menus, cookie banner or footer), dropping leading labels and list markers, paywall and list-page
-  rejection, local and odd URLs refused (including a redirect to `127.0.0.1`), and refusals turned
-  into readable errors.
+  rejection, local and odd URLs refused (including a redirect to `127.0.0.1`), host names that point
+  at local addresses refused (lookups faked, so the tests stay offline), and refusals turned into
+  readable errors.
 - Pop-up additions to the other test files: `author`, `tags` and `feed_text` parsing; backfill;
   migrating a first-release database; reader cache (kept on success, retried after a failure);
   `/detail` fetching once and then using the cache; `retry=true`; a crashing extractor.
@@ -494,3 +499,7 @@ News Forum/
   stories). Trimmed links are remembered for 14 days in `pruned_links`, so a feed that still lists them
   can't bring them back as new. The server now answers only to `127.0.0.1` / `localhost` and refuses
   `POST`s from other sites (`Origin` ≠ `Host`). 64 tests.
+- **2026-11-23**: Save / Mark read replies now carry the tab counts, and the badges use the new
+  `GET /api/counts`, so a click no longer reloads up to 400 stories. The reader looks up a host name
+  before fetching and refuses it if any address it points to is local (a public name set to
+  `127.0.0.1` used to get through). Leftover "3-day" wording fixed. 71 tests.

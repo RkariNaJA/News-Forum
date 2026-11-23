@@ -91,17 +91,22 @@ def create_app(feeds_path: Path, db_path: Path,
         return {"view": view, "articles": store.list_articles(view, (q or "").strip() or None),
                 "counts": store.counts()}
 
+    @app.get("/api/counts")
+    def counts():
+        """Unread counts per tab, without the stories (for the tab badges)."""
+        return store.counts()
+
     @app.post("/api/articles/{article_id}/read")
     def set_read(article_id: int, body: FlagBody):
         if not store.set_flag(article_id, "is_read", body.value):
             raise HTTPException(404, "article not found")
-        return {"ok": True}
+        return {"ok": True, "counts": store.counts()}
 
     @app.post("/api/articles/{article_id}/saved")
     def set_saved(article_id: int, body: FlagBody):
         if not store.set_flag(article_id, "saved", body.value):
             raise HTTPException(404, "article not found")
-        return {"ok": True}
+        return {"ok": True, "counts": store.counts()}
 
     @app.get("/api/articles/{article_id}/detail")
     def detail(article_id: int, retry: bool = False):
@@ -132,7 +137,7 @@ def create_app(feeds_path: Path, db_path: Path,
 
     @app.post("/api/articles/read-all")
     def read_all(body: IdsBody):
-        return {"updated": store.mark_all_read(body.ids)}
+        return {"updated": store.mark_all_read(body.ids), "counts": store.counts()}
 
     @app.get("/api/status")
     def status():

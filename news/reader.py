@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ipaddress
+import socket
 from urllib.parse import urlsplit
 
 import httpx
@@ -23,8 +24,14 @@ class ReaderError(Exception):
     """The article could not be fetched or no readable story text was found."""
 
 
+def _resolve(host: str) -> list[str]:
+    """Every IP address a host name points to (tests replace this, so they run offline)."""
+    return [info[4][0] for info in socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)]
+
+
 def check_url(url: str) -> None:
-    """Allow only public http(s) URLs, never this PC or the local network."""
+    """Allow only public http(s) URLs, never this PC or the local network. A host name is looked up,
+    and refused if any address it points to is local (e.g. a public name set to 127.0.0.1)."""
     parts = urlsplit(url or "")
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise ReaderError("Not a web link")
@@ -32,10 +39,14 @@ def check_url(url: str) -> None:
     if host == "localhost" or host.endswith(".localhost") or host.endswith(".local"):
         raise ReaderError("Local addresses are not fetched")
     try:
-        ip = ipaddress.ip_address(host)
+        addresses = [ipaddress.ip_address(host)]
     except ValueError:
-        return
-    if not ip.is_global:
+        try:
+            # "fe80::1%12": drop the IPv6 zone index, which ip_address() doesn't accept
+            addresses = [ipaddress.ip_address(a.split("%")[0]) for a in _resolve(host)]
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise ReaderError("Couldn't find the site") from exc
+    if not addresses or not all(ip.is_global for ip in addresses):
         raise ReaderError("Local addresses are not fetched")
 
 

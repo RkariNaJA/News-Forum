@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black" alt="Vanilla JavaScript">
   <img src="https://img.shields.io/badge/RSS-25%20feeds-FFA500?logo=rss&logoColor=white" alt="RSS: 25 feeds">
-  <img src="https://img.shields.io/badge/tests-64%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 64 passing">
+  <img src="https://img.shields.io/badge/tests-71%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 71 passing">
   <img src="https://img.shields.io/badge/runs-localhost%20only-555555" alt="runs on localhost only">
 </p>
 
@@ -143,14 +143,14 @@ To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a sec
 | File | What it does |
 |---|---|
 | [`news/feeds.py`](news/feeds.py) | Loads `feeds.json`, downloads feeds in parallel with httpx, parses RSS/Atom with feedparser, strips HTML, normalises links |
-| [`news/store.py`](news/store.py) | SQLite: articles (unique by link) and per-source fetch status; tab queries, search, read/saved flags, 3-day trim |
-| [`news/reader.py`](news/reader.py) | Reader view: fetches one article page (public web addresses only) and extracts the story as plain paragraphs with trafilatura |
+| [`news/store.py`](news/store.py) | SQLite: articles (unique by link) and per-source fetch status; tab queries, search, read/saved flags, trim to today and yesterday |
+| [`news/reader.py`](news/reader.py) | Reader view: fetches one article page (public web addresses only, checked after the name is looked up) and extracts the story as plain paragraphs with trafilatura |
 | [`news/highlights.py`](news/highlights.py) | Key sentences for the pop-up: sentences carrying the story's distinctive words (TF-IDF over all stored stories), without AI |
 | [`news/server.py`](news/server.py) | FastAPI app: `/api/refresh`, `/api/articles`, `/api/articles/{id}/detail`, `/api/status`, read/save endpoints, serves the page |
-| [`news/config.py`](news/config.py) | Port, paths, the 30-minute freshness window and the 3-day window |
+| [`news/config.py`](news/config.py) | Port, paths, the 30-minute freshness window and the 2-day (today and yesterday) window |
 | [`web/app.js`](web/app.js) | The page: tabs, cards, search, filters, theme. All feed text goes in via `textContent`, never `innerHTML` |
 | [`web/style.css`](web/style.css) | Newspaper look, light and dark palettes |
-| [`tests/`](tests/) | 64 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
+| [`tests/`](tests/) | 71 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
 
 ## Documentation
 

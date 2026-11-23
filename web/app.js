@@ -257,7 +257,7 @@ function renderCounts(counts) {
 }
 
 async function loadCounts() {
-  renderCounts((await api("/api/articles?view=today")).counts);
+  renderCounts(await api("/api/counts"));
 }
 
 async function load() {
@@ -278,9 +278,8 @@ async function setFlag(a, which, value) {
   a[field] = value ? 1 : 0;
   render();
   try {
-    await api(`/api/articles/${a.id}/${which}`, { method: "POST", body: { value } });
-    const data = await api(`/api/articles?view=${state.view}${state.q ? "&q=" + encodeURIComponent(state.q) : ""}`);
-    renderCounts(data.counts);
+    const r = await api(`/api/articles/${a.id}/${which}`, { method: "POST", body: { value } });
+    renderCounts(r.counts);   // the reply carries the new tab counts: no need to reload the list
   } catch (e) { console.error(e); }
 }
 

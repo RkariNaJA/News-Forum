@@ -1,11 +1,25 @@
 import httpx
 import pytest
 
+from news import reader
 from news.reader import MIN_TEXT_CHARS, ReaderError, check_url, download, extract
 from conftest import FIXTURES
 
 ARTICLE = (FIXTURES / "article.html").read_text(encoding="utf-8")
 URL = "https://news.example.com/world/trade-deal"
+
+# Offline stand-in for DNS: what each test host name "points to".
+DNS = {"rebind.example.net": ["127.0.0.1"], "router.example.net": ["192.168.1.1"],
+       "mixed.example.net": ["8.8.8.8", "10.0.0.7"], "v6-local.example.net": ["fe80::1%12"]}
+
+
+@pytest.fixture(autouse=True)
+def fake_dns(monkeypatch):
+    def resolve(host):
+        if host == "no-such-host.example.net":
+            raise OSError("not found")
+        return DNS.get(host, ["93.184.216.34"])   # any other name: a public address
+    monkeypatch.setattr(reader, "_resolve", resolve)
 
 
 def test_extract_keeps_story_and_drops_page_chrome():
@@ -89,6 +103,28 @@ def test_redirect_to_local_address_is_refused():
     def handler(req):
         if req.url.host == "news.example.com":
             return httpx.Response(302, headers={"location": "http://127.0.0.1:8770/api/status"})
+        return httpx.Response(200, text="secret")
+    with _client(handler) as c:
+        with pytest.raises(ReaderError, match="Local"):
+            download(URL, c)
+
+
+@pytest.mark.parametrize("host", ["rebind.example.net", "router.example.net", "mixed.example.net",
+                                  "v6-local.example.net"])
+def test_names_that_point_at_local_addresses_are_refused(host):
+    with pytest.raises(ReaderError, match="Local"):
+        check_url(f"https://{host}/story")
+
+
+def test_unknown_host_name_is_a_readable_error():
+    with pytest.raises(ReaderError, match="find the site"):
+        check_url("https://no-such-host.example.net/story")
+
+
+def test_redirect_to_a_name_pointing_at_this_pc_is_refused():
+    def handler(req):
+        if req.url.host == "news.example.com":
+            return httpx.Response(302, headers={"location": "http://rebind.example.net:8770/api/status"})
         return httpx.Response(200, text="secret")
     with _client(handler) as c:
         with pytest.raises(ReaderError, match="Local"):
