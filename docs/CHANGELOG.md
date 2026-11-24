@@ -106,3 +106,11 @@
   timer inside the running app (`news/telegram.py`). BTC/ETH from Binance, gold from Yahoo gold
   futures with Binance PAXG as the fallback. `TELEGRAM_BOT_TOKEN=` and `TELEGRAM_CHAT_ID=`
   placeholders added to `.env`; `--send-prices` sends one now to test them.
+- **2026-11-24**: After the final review, a zero, negative, NaN or infinite price no longer drops the
+  whole message: gold falls back to PAXG, and a bad BTC/ETH number makes just that line
+  `unavailable`. An error in one pass of the Telegram timer (e.g. the log file) no longer stops it for
+  the session. Setup: the first chat ID tried was the bot's own ID (the token's prefix), so the README
+  now says to use your user ID (@userinfobot). New bots then got `429 Too Many Requests: retry after 32`
+  after a ~33 s hang, shown as "Timed out", even with a revoked token, a second new bot and mobile
+  data. This was a Telegram-side problem with new bots since 23 Nov (tdlib/telegram-bot-api #1105–#1115).
+  Worked around by using the user's existing, working bot, and the first message was sent.

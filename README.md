@@ -146,9 +146,13 @@ shows these steps. No restart is needed.
 
 **Telegram price messages (optional):** the app sends BTC, ETH and gold (price, change, % change) to
 your Telegram bot every day at 08:30, 10:30, 12:30, 14:30, 16:30 and 17:30 while it runs. Create a bot
-with @BotFather and paste its token after `TELEGRAM_BOT_TOKEN=` in `.env`. Send your bot any message,
-open `https://api.telegram.org/bot<token>/getUpdates`, and paste the `"chat":{"id": ...}` number after
-`TELEGRAM_CHAT_ID=`. Test it with `py -3.13 -m news --send-prices`. Until both are filled in, nothing is sent.
+with @BotFather and paste its token after `TELEGRAM_BOT_TOKEN=` in `.env`. Open the bot and press
+**Start** (a bot can only message you after you message it). For `TELEGRAM_CHAT_ID=`, use **your own
+user ID**: message @userinfobot, or take the `"chat":{"id": ...}` number from
+`https://api.telegram.org/bot<token>/getUpdates`. It is the same for every bot. Not the digits before the
+colon in the token: that's the bot's own ID, and Telegram can't deliver to it. Test it with
+`py -3.13 -m news --send-prices`. Until both are filled in, nothing is sent. One bot can serve several
+of your apps, since this one only sends. If sends fail, see the developer guide (*Telegram price messages*).
 
 To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a section: `world`,
 `business`, `markets`, `asia` or `tech` for the AI tab) and restart.

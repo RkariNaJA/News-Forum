@@ -61,9 +61,17 @@ so tests don't start it). It checks the clock every 30 s; a slot seen more than 
 late, because the PC was off or asleep, is skipped, and each slot is sent once even if it fails.
 BTC/ETH come from Binance's `ticker/24hr` (24 h change); gold from Yahoo's `GC=F` chart (gold
 futures, change since the previous close), else Binance `PAXGUSDT`, which the message then names. A
-price that fails shows as `unavailable`. Each send is logged as `Telegram prices <slot>: <status>`.
+price that fails, or comes back zero, negative, NaN or infinite, shows as `unavailable` (gold tries PAXG
+first). An error in one pass of the timer never stops it. Each send is logged as `Telegram prices <slot>: <status>`.
 `py -3.13 -m news --send-prices` sends one message now and exits, even while the app runs. The bot
 token is part of Telegram's URL, so `send` replaces it with `***` in every error.
+
+**If sends fail.** `Telegram refused the message: Bad Request: chat not found` (or `Forbidden`) means
+the chat ID is wrong, e.g. the bot's own ID (the digits before the token's colon), or the bot was never
+started. `Timed out` can hide a rate limit: Telegram may hold a request ~33 s before answering
+`429 Too Many Requests`, longer than `TIMEOUT` (15 s). From 23 Nov 2026 Telegram's Bot API answered every
+call from *new* bots this way, whatever the token or network (tdlib/telegram-bot-api issues
+#1105–#1115), while bots already in use kept working. The fix was to reuse such a bot's token.
 
 ## 2. How a refresh works
 
@@ -415,7 +423,8 @@ py -3.13 -m pytest -q
   no fetch without a key, the 30-minute cache, the wait after a failure, and keeping the last answer.
 - [`test_telegram.py`](../tests/test_telegram.py): settings needing both values, quotes from faked
   Binance and Yahoo answers, the PAXG fallback, a failed price shown as `unavailable`, the exact
-  message, the token never in an error, Telegram refusals, the slot window, and each slot sent once.
+  message, bad numbers (zero, NaN, infinite) falling back or shown as `unavailable`, the token never in
+  an error, Telegram refusals, the slot window, each slot sent once, and the timer surviving errors.
 - [`test_feargreed.py`](../tests/test_feargreed.py): history ordered oldest first, today's value and
   label, the next-update time, changed or empty data rejected, the hour-long cache, and the last answer
   kept when a later fetch fails.
