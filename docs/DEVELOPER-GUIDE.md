@@ -52,6 +52,19 @@ Task Scheduler job, because scheduled jobs on this machine get sandboxed. Bookma
 The database `data/news.db` is created on first start. Deleting it is safe: the next page load
 refetches everything (you lose read/saved marks).
 
+### Telegram price messages
+
+[`news/telegram.py`](../news/telegram.py) sends BTC, ETH and gold (price, change, % change) to a
+Telegram chat every day at `SLOTS` = 08:30, 10:30, 12:30, 14:30, 16:30 and 17:30, PC time.
+`PriceNotifier` is a daemon thread started by `__main__` just before uvicorn (never by `create_app`,
+so tests don't start it). It checks the clock every 30 s; a slot seen more than `GRACE_MINUTES` (10)
+late, because the PC was off or asleep, is skipped, and each slot is sent once even if it fails.
+BTC/ETH come from Binance's `ticker/24hr` (24 h change); gold from Yahoo's `GC=F` chart (gold
+futures, change since the previous close), else Binance `PAXGUSDT`, which the message then names. A
+price that fails shows as `unavailable`. Each send is logged as `Telegram prices <slot>: <status>`.
+`py -3.13 -m news --send-prices` sends one message now and exits, even while the app runs. The bot
+token is part of Telegram's URL, so `send` replaces it with `***` in every error.
+
 ## 2. How a refresh works
 
 1. On load, [`web/app.js`](../web/app.js) calls `POST /api/refresh` (not forced). The **Refresh**
@@ -210,6 +223,8 @@ All in [`news/config.py`](../news/config.py) unless noted.
 | `FEEDS_PATH` / `DB_PATH` / `WEB_DIR` | `feeds.json`, `data/news.db`, `web/` | Relative to the project folder |
 | `TTL` / `RETRY_AFTER` (etf.py) | `1800 s` / `120 s` | How long SoSoValue's answer is reused, and how long to wait after a failure. One refresh is 2 calls plus one per fund; SoSoValue allows 20 a minute (`MAX_FUNDS` = 17) |
 | `SOSOVALUE_API_KEY` (`.env`) | none | SoSoValue API key for the BTC ETF page: the environment variable wins, else the `SOSOVALUE_API_KEY=` line of `.env` in the project folder (git-ignored; `read_dotenv` in etf.py, no extra package). Read on every request, so adding it needs no restart |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` (`.env`) | empty | Bot token (from @BotFather) and chat id for the price messages; the environment wins, else `.env`. With either empty nothing is sent. Read at every send, so filling them needs no restart |
+| `SLOTS` / `GRACE_MINUTES` (telegram.py) | 08:30 … 17:30 / `10` | Send times (PC time, every day), and how late a slot may still be sent |
 | `TIMEOUT` (feeds.py) | `20.0` s | Per-request HTTP timeout |
 | `SUMMARY_MAX` (feeds.py) | `320` | Blurb length before truncation |
 | `UNDATED_STEP` (feeds.py) | `20 min` | Spacing for entries with no date |
@@ -398,6 +413,9 @@ py -3.13 -m pytest -q
   the rate limit (stopping at it, without asking for the rest), a refresh with most funds missing
   failing while the last complete table stays, a changed fund list, the `{code, data}` wrapper, the key from `.env` or the environment,
   no fetch without a key, the 30-minute cache, the wait after a failure, and keeping the last answer.
+- [`test_telegram.py`](../tests/test_telegram.py): settings needing both values, quotes from faked
+  Binance and Yahoo answers, the PAXG fallback, a failed price shown as `unavailable`, the exact
+  message, the token never in an error, Telegram refusals, the slot window, and each slot sent once.
 - [`test_feargreed.py`](../tests/test_feargreed.py): history ordered oldest first, today's value and
   label, the next-update time, changed or empty data rejected, the hour-long cache, and the last answer
   kept when a later fetch fails.
@@ -443,7 +461,7 @@ News Forum/
 ├── requirements.txt
 ├── .gitignore               ← .env, data/*.db, data/*.log, caches
 ├── news/
-│   ├── __main__.py          ← entry point: --no-browser, single instance, log file, uvicorn
+│   ├── __main__.py          ← entry point: --no-browser, --send-prices, single instance, log file, uvicorn
 │   ├── config.py            ← settings
 │   ├── etf.py               ← BTC ETF page: US spot Bitcoin ETFs (SoSoValue), cached
 │   ├── feargreed.py         ← Crypto Fear & Greed Index (alternative.me), cached
@@ -452,6 +470,7 @@ News Forum/
 │   ├── highlights.py        ← key sentences for the pop-up highlights (TF-IDF, no AI)
 │   ├── reader.py            ← reader view: safe page download + story extraction
 │   ├── store.py             ← SQLite (articles, feed status, reader cache)
+│   ├── telegram.py          ← Telegram price messages (BTC, ETH, gold) at fixed times
 │   └── server.py            ← FastAPI routes
 ├── web/                     ← index.html, style.css, etf.js, fedwatch.js, feargreed.js, prices.js, app.js, keys.js
 ├── Pic/                     ← README screenshots

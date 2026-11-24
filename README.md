@@ -131,7 +131,8 @@ runs: a second launch sees the first and steps aside. Details, plus how to stop 
 > refuses requests addressed to any other host name, and changes (save, mark read, refresh) sent by
 > other websites open in your browser.
 >
-> ⚠️ **No background schedule.** News is fetched only while the page is open: when you open it, when
+> ⚠️ **No background schedule for news.** (The Telegram price messages are the one exception: a
+> timer inside the running app, not a scheduled task.) News is fetched only while the page is open: when you open it, when
 > you click Refresh, and every 2 hours while it stays open. This is on purpose: no scheduled task
 > means no security-software sandbox to fight.
 >
@@ -142,6 +143,12 @@ runs: a second launch sees the first and steps aside. Details, plus how to stop 
 and paste it after `SOSOVALUE_API_KEY=` in the `.env` file in this folder (git-ignored, so the key is
 never committed; the environment variable of the same name also works). Until then the BTC ETF page
 shows these steps. No restart is needed.
+
+**Telegram price messages (optional):** the app sends BTC, ETH and gold (price, change, % change) to
+your Telegram bot every day at 08:30, 10:30, 12:30, 14:30, 16:30 and 17:30 while it runs. Create a bot
+with @BotFather and paste its token after `TELEGRAM_BOT_TOKEN=` in `.env`. Send your bot any message,
+open `https://api.telegram.org/bot<token>/getUpdates`, and paste the `"chat":{"id": ...}` number after
+`TELEGRAM_CHAT_ID=`. Test it with `py -3.13 -m news --send-prices`. Until both are filled in, nothing is sent.
 
 To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a section: `world`,
 `business`, `markets`, `asia` or `tech` for the AI tab) and restart.

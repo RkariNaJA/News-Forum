@@ -101,3 +101,8 @@
   reason instead of saying "Couldn't reach" for everything, and says to check the internet
   connection when every feed fails. `requirements.txt` pins exact versions (plus Starlette, which the
   test client depends on). Page files `?v=16`.
+- **2026-11-24**: Telegram price messages, at the user's request: BTC, ETH and gold (price, change,
+  % change) sent to the user's bot daily at 08:30, 10:30, 12:30, 14:30, 16:30 and 17:30, from a
+  timer inside the running app (`news/telegram.py`). BTC/ETH from Binance, gold from Yahoo gold
+  futures with Binance PAXG as the fallback. `TELEGRAM_BOT_TOKEN=` and `TELEGRAM_CHAT_ID=`
+  placeholders added to `.env`; `--send-prices` sends one now to test them.

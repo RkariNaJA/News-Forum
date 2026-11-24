@@ -1,4 +1,4 @@
-"""Run News Forum: python -m news [--no-browser]"""
+"""Run News Forum: python -m news [--no-browser] [--send-prices]"""
 import argparse
 import os
 import socket
@@ -10,6 +10,7 @@ import uvicorn
 
 from . import config
 from .server import create_app
+from .telegram import PriceNotifier, send_prices
 
 LOG_PATH = config.ROOT / "data" / "news-forum.log"
 LOG_MAX_BYTES = 1_000_000
@@ -37,9 +38,14 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m news")
     parser.add_argument("--no-browser", action="store_true",
                         help="start the server without opening a browser tab (used at Windows login)")
+    parser.add_argument("--send-prices", action="store_true",
+                        help="send the Telegram price message once now and exit (to test the .env settings)")
     args = parser.parse_args(argv)
 
     use_log_file_if_windowless()
+    if args.send_prices:
+        print(f"Telegram prices: {send_prices()}", flush=True)
+        return
     url = f"http://{config.HOST}:{config.PORT}/"
     if already_running(config.HOST, config.PORT):
         print(f"News Forum is already running at {url}", flush=True)
@@ -50,6 +56,7 @@ def main(argv: list[str] | None = None) -> None:
     app = create_app(config.FEEDS_PATH, config.DB_PATH)
     if not (args.no_browser or os.environ.get("NEWS_NO_BROWSER")):
         threading.Timer(1.0, webbrowser.open, args=(url,)).start()
+    PriceNotifier().start()
     uvicorn.run(app, host=config.HOST, port=config.PORT)
 
 
