@@ -279,6 +279,29 @@ def test_send_prices_failure_is_a_status_without_the_token(tmp_path):
     assert status.startswith("Failed:") and "SECRET" not in status
 
 
+@pytest.mark.parametrize("token", [
+    "123:ab\x00c",        # httpx raises InvalidURL (not an HTTPError): used to escape as a crash
+    "123:a/../../x",      # would quietly post to a different Telegram address
+    "123:a?x=1", "123:a#f", "123:abc def", "123:abé", "no-colon", ":abc", "123:",
+])
+def test_malformed_token_is_refused_before_sending(token):
+    client, seen = _tg_client(lambda req: httpx.Response(200, json={"ok": True}))
+    with client, pytest.raises(telegram.TelegramError) as info:
+        telegram.send(token, "555", "x", client)
+    assert seen == []
+    assert str(info.value) == telegram.BAD_TOKEN and token not in str(info.value)
+
+
+def test_malformed_token_is_a_plain_failure_status(tmp_path, monkeypatch):
+    monkeypatch.setenv(telegram.TOKEN_ENV, "123:ab\x7fc")
+    monkeypatch.setenv(telegram.CHAT_ENV, "555")
+    client, seen = _tg_client(lambda req: httpx.Response(200, json={"ok": True}))
+    with client:
+        status = telegram.send_prices(tmp_path / ".env", client, NOW)
+    assert status == f"Failed: {telegram.BAD_TOKEN}"
+    assert [r for r in seen if r.url.host == "api.telegram.org"] == []
+
+
 # ---- schedule -------------------------------------------------------------------------------------
 def test_slots_are_the_agreed_times():
     assert telegram.SLOTS == ("08:30", "10:30", "12:30", "14:30", "16:30", "17:30")
@@ -322,6 +345,39 @@ def test_notifier_says_not_set_up_only_once(capsys):
                                clock=lambda: next(clock))
     n.tick(); n.tick()
     assert capsys.readouterr().out.count("Not set up") == 1
+
+
+def _at(h, m):
+    return lambda: datetime(2026, 11, 24, h, m)
+
+
+def test_restart_inside_a_slot_window_does_not_send_again(tmp_path):
+    state, calls = tmp_path / "telegram-sent.txt", []
+    telegram.PriceNotifier(send=lambda: calls.append("first") or "Sent", clock=_at(14, 31), state_path=state).tick()
+    telegram.PriceNotifier(send=lambda: calls.append("restart") or "Sent", clock=_at(14, 35), state_path=state).tick()
+    assert calls == ["first"]
+    assert state.read_text(encoding="utf-8").strip() == "2026-11-24 14:30"
+
+
+def test_restart_still_sends_the_next_slot(tmp_path):
+    state, calls = tmp_path / "telegram-sent.txt", []
+    state.write_text("2026-11-24 14:30\n", encoding="utf-8")
+    telegram.PriceNotifier(send=lambda: calls.append(1) or "Sent", clock=_at(16, 31), state_path=state).tick()
+    assert calls == [1] and state.read_text(encoding="utf-8").strip() == "2026-11-24 16:30"
+
+
+@pytest.mark.parametrize("junk", ["", "garbage\n", "2026-11-24 14:30; rm -rf\n", "\x00\xff"])
+def test_unreadable_record_is_ignored(tmp_path, junk):
+    state, calls = tmp_path / "telegram-sent.txt", []
+    state.write_text(junk, encoding="latin-1")
+    telegram.PriceNotifier(send=lambda: calls.append(1) or "Sent", clock=_at(14, 31), state_path=state).tick()
+    assert calls == [1]
+
+
+def test_record_that_cannot_be_read_or_written_never_blocks_a_send(tmp_path, capsys):
+    calls = []   # the "file" is a folder: reading and writing both fail with OSError
+    telegram.PriceNotifier(send=lambda: calls.append(1) or "Sent", clock=_at(14, 31), state_path=tmp_path).tick()
+    assert calls == [1] and "14:30: Sent" in capsys.readouterr().out
 
 
 class _StopLoop(BaseException):

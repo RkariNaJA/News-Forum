@@ -122,3 +122,9 @@
   gold came from PAXG. New `tests/test_feeds_live.py` (`--live`, internet only): one test per feed
   through the real client, with one retry after 3 s. Its first run caught a one-off failure of MIT Tech
   Review AI, hence the retry. With the old browser User-Agent it fails all four Guardian feeds.
+- **2026-11-24**: Telegram: a restart inside a slot's 10 minutes no longer sends that slot again. The
+  last slot sent is kept in `data/telegram-sent.txt` (git-ignored with `data/*.txt` and `data/*.tmp`),
+  written via a temp file. A missing, garbled or unwritable file never blocks a send. The bot token's
+  shape is checked before it goes into Telegram's URL: a control character used to raise httpx's
+  `InvalidURL` (not caught, so `--send-prices` crashed), and `123:a/../x` would have posted to another
+  address. Now both read `Failed: TELEGRAM_BOT_TOKEN in .env looks wrong…`. 17 new tests (191 total).

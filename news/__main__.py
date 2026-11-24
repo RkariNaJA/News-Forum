@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> None:
     app = create_app(config.FEEDS_PATH, config.DB_PATH)
     if not (args.no_browser or os.environ.get("NEWS_NO_BROWSER")):
         threading.Timer(1.0, webbrowser.open, args=(url,)).start()
-    PriceNotifier().start()
+    PriceNotifier(state_path=config.TELEGRAM_SENT_PATH).start()
     uvicorn.run(app, host=config.HOST, port=config.PORT)
 
 

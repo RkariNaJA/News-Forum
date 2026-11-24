@@ -8,6 +8,7 @@ from __future__ import annotations
 import html
 import math
 import os
+import re
 import threading
 import time
 from datetime import datetime, timedelta
@@ -34,6 +35,9 @@ SLOTS = ("08:30", "10:30", "12:30", "14:30", "16:30", "17:30")   # this PC's loc
 GRACE_MINUTES = 10   # a slot seen later than this (PC asleep or off) is skipped, never sent late
 POLL_SECONDS = 30
 NOT_SET_UP = f"Not set up: add {TOKEN_ENV} and {CHAT_ENV} to .env"
+TOKEN_RE = re.compile(r"[0-9]+:[A-Za-z0-9_-]+")   # BotFather's shape: bot id, colon, letters/digits/_/-
+BAD_TOKEN = f"{TOKEN_ENV} in .env looks wrong: it should look like 123456789:AAH-xyz (no spaces or quotes)"
+SLOT_KEY_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}")
 
 
 class TelegramError(Exception):
@@ -127,6 +131,8 @@ def format_message(quotes: list[dict], now: datetime) -> str:
 # ---- sending --------------------------------------------------------------------------------------
 def send(token: str, chat_id: str, text: str, client: httpx.Client) -> None:
     """Post one HTML message. Raises TelegramError; the token (part of the URL) is scrubbed from it."""
+    if not TOKEN_RE.fullmatch(token):   # it goes into the URL: a stray character could crash or misdirect
+        raise TelegramError(BAD_TOKEN)
     try:
         r = client.post(SEND_URL.format(token=token), timeout=SEND_TIMEOUT,
                         json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
@@ -181,19 +187,46 @@ def due_slot(now: datetime, sent: set[str]) -> str | None:
 
 
 class PriceNotifier:
-    """Background loop: checks the clock every POLL_SECONDS and sends the prices at each slot, once."""
+    """Background loop: checks the clock every POLL_SECONDS and sends the prices at each slot, once.
+
+    With state_path, the last slot sent is kept in that file, so a restart inside a slot's window
+    doesn't send it again. A missing, unreadable or garbled file just means "nothing sent yet".
+    """
 
     def __init__(self, send: Callable[[], str] = send_prices, clock: Callable[[], datetime] = datetime.now,
-                 poll_seconds: float = POLL_SECONDS):
-        self._send, self._clock, self._poll = send, clock, poll_seconds
+                 poll_seconds: float = POLL_SECONDS, state_path: Path | None = None):
+        self._send, self._clock, self._poll, self._state = send, clock, poll_seconds, state_path
         self._sent: set[str] = set()
+        last = self._load_last()
+        if last:
+            self._sent.add(last)
         self._said_not_set_up = False
+
+    def _load_last(self) -> str | None:
+        if self._state is None:
+            return None
+        try:
+            text = self._state.read_text(encoding="utf-8").strip()
+        except (OSError, ValueError):
+            return None
+        return text if SLOT_KEY_RE.fullmatch(text) else None
+
+    def _save_last(self, key: str) -> None:
+        if self._state is None:
+            return
+        tmp = self._state.with_name(self._state.name + ".tmp")
+        try:
+            tmp.write_text(key + "\n", encoding="utf-8")
+            os.replace(tmp, self._state)
+        except OSError:   # can't record it: the send still happens, only restart protection is lost
+            pass
 
     def tick(self) -> None:
         key = due_slot(self._clock(), self._sent)
         if key is None:
             return
         self._sent.add(key)   # before sending: a failure is not retried every poll
+        self._save_last(key)
         try:
             status = self._send()
         except Exception as exc:  # a bug here must not stop later slots

@@ -57,8 +57,9 @@ refetches everything (you lose read/saved marks).
 [`news/telegram.py`](../news/telegram.py) sends BTC, ETH, ADA, OP and gold (price, change, % change) to
 a Telegram chat every day at `SLOTS` = 08:30, 10:30, 12:30, 14:30, 16:30 and 17:30, PC time.
 `PriceNotifier` is a daemon thread started by `__main__` just before uvicorn (never by `create_app`, so
-tests don't start it). It checks the clock every 30 s; a slot seen more than `GRACE_MINUTES` (10) late,
-because the PC was off or asleep, is skipped, and each slot is sent once even if it fails. The coins
+tests don't start it). It checks the clock every 30 s; a slot seen more than `GRACE_MINUTES` (10) late
+(PC off or asleep) is skipped, and each slot is sent once even if it fails, also across a restart: the
+last slot sent is kept in `data/telegram-sent.txt` (missing or garbled means none sent). The coins
 (`COINS`) come from Binance's `ticker/24hr` (24 h change; prices under $1 get 4 decimals); gold from
 Yahoo's `GC=F` chart (gold futures, change since the previous close), else Binance `PAXGUSDT`, which
 the message then names. To add a coin, add `("NAME", "<SYMBOL>USDT")` to `COINS` (names up to 4 letters
@@ -67,14 +68,14 @@ or infinite, shows as `unavailable` (gold tries PAXG first). An error in one pas
 stops it. Each send is logged as `Telegram prices <slot>: <status>`; the status names any price that
 was unavailable and why, and why gold came from PAXG. `py -3.13 -m news --send-prices`
 sends one message now and exits, even while the app runs. The bot token is part of Telegram's URL, so
-`send` replaces it with `***` in every error.
+`send` first checks its shape (`TOKEN_RE`) and replaces it with `***` in every error.
 
 **If sends fail.** `Telegram refused the message: Bad Request: chat not found` (or `Forbidden`) means
 the chat ID is wrong, e.g. the bot's own ID (the digits before the token's colon), or the bot was never
-started. Telegram may hold a request ~33 s before answering `429 Too Many Requests`, so `send`
-waits `SEND_TIMEOUT` (40 s) to show it rather than `Timed out` (it waited 15 s before). From 23 Nov 2026 Telegram's Bot API answered every
-call from *new* bots this way, whatever the token or network (tdlib/telegram-bot-api issues
-#1105–#1115), while bots already in use kept working. The fix was to reuse such a bot's token.
+started; `TELEGRAM_BOT_TOKEN in .env looks wrong` means a stray space, quote or character in the token.
+Telegram may hold a request ~33 s before answering `429 Too Many Requests`, so `send` waits
+`SEND_TIMEOUT` (40 s) to show it rather than `Timed out`. From 23 Nov 2026 it answered every call from
+*new* bots this way (tdlib/telegram-bot-api #1105–#1115); bots already in use worked. Fix: reuse one.
 
 ## 2. How a refresh works
 
@@ -427,13 +428,13 @@ py -3.13 -m pytest -q
 - [`test_telegram.py`](../tests/test_telegram.py): settings needing both values, quotes from faked
   Binance and Yahoo answers, the PAXG fallback, a failed price shown as `unavailable`, the exact
   message, bad numbers (zero, NaN, infinite) falling back or shown as `unavailable`, the token never in
-  an error, Telegram refusals, the slot window, each slot sent once, the timer surviving errors, and
-  4 decimals under $1 (ADA, OP).
+  an error, a malformed token refused unsent, Telegram refusals, the slot window, each slot sent once
+  (also after a restart, with a garbled or unwritable record), the timer surviving errors, 4 decimals.
 - [`test_feargreed.py`](../tests/test_feargreed.py): history ordered oldest first, today's value and
   label, the next-update time, changed or empty data rejected, the hour-long cache, and the last answer
   kept when a later fetch fails.
 - [`test_main.py`](../tests/test_main.py): detecting a server already on the port, a second launch
-  not starting another server, and windowless output going to the log file.
+  not starting another server, the price timer given its record file, windowless output to the log.
 
 Sample feeds and a sample article page (`article.html`) are in `tests/fixtures/`.
 
@@ -446,10 +447,9 @@ py -3.13 -m pytest --live -q tests/test_price_rows_live.py
 ```
 
 [`test_feeds_live.py`](../tests/test_feeds_live.py) fetches each source in `feeds.json` through
-`fetch_all` (the app's real User-Agent and timeout), one test per feed, retrying once after 3 s so a
-network blip doesn't count. A failure reads like `The Guardian: Refused by the site (403) (twice)`.
-Checked: with the old `Mozilla/...` User-Agent it fails all four Guardian feeds. Run it when a source
-looks wrong.
+`fetch_all` (the app's real User-Agent and timeout), one test per feed, retrying once after 3 s. A
+failure reads `The Guardian: Refused by the site (403) (twice)`; with the old `Mozilla/...` User-Agent
+it fails all four Guardian feeds. Run it when a source looks wrong.
 
 [`test_price_rows_live.py`](../tests/test_price_rows_live.py) needs internet (TradingView) and drives
 Microsoft Edge through Playwright, falling back to Playwright's own Chromium if Edge won't start. It
@@ -479,7 +479,7 @@ News Forum/
 ├── Start News Forum.bat     ← launcher (py -3.13 -m news)
 ├── feeds.json               ← source list
 ├── requirements.txt
-├── .gitignore               ← .env, data/*.db, data/*.log, caches
+├── .gitignore               ← .env, data/*.db, *.log, *.txt, *.tmp, caches
 ├── news/
 │   ├── __main__.py          ← entry point: --no-browser, --send-prices, single instance, log file, uvicorn
 │   ├── config.py            ← settings
@@ -494,6 +494,6 @@ News Forum/
 │   └── server.py            ← FastAPI routes
 ├── web/                     ← index.html, style.css, etf.js, fedwatch.js, feargreed.js, prices.js, app.js, keys.js
 ├── Pic/                     ← README screenshots
-├── data/                    ← news.db + news-forum.log, created on first run (git-ignored)
+├── data/                    ← news.db, news-forum.log, telegram-sent.txt; created on first run (git-ignored)
 └── tests/                   ← conftest.py, test_*.py, fixtures/
 ```

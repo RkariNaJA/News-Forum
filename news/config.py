@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 FEEDS_PATH = ROOT / "feeds.json"
 DB_PATH = ROOT / "data" / "news.db"
+TELEGRAM_SENT_PATH = ROOT / "data" / "telegram-sent.txt"   # last price slot sent, so a restart doesn't resend
 WEB_DIR = ROOT / "web"
 
 HOST = "127.0.0.1"

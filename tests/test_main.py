@@ -15,6 +15,10 @@ def test_already_running_detects_a_listener():
 
 class FakeNotifier:
     started = []
+    kwargs = None
+
+    def __init__(self, **kwargs):
+        FakeNotifier.kwargs = kwargs
 
     def start(self):
         FakeNotifier.started.append(1)
@@ -42,6 +46,9 @@ def test_notifier_starts_with_the_server(monkeypatch):
     monkeypatch.setattr(entry, "PriceNotifier", FakeNotifier)
     entry.main(["--no-browser"])
     assert started == ["app"] and FakeNotifier.started == [1]
+    # the sent-slot record lives in data/, so a restart inside a slot's window doesn't send twice
+    assert FakeNotifier.kwargs == {"state_path": entry.config.TELEGRAM_SENT_PATH}
+    assert entry.config.TELEGRAM_SENT_PATH == entry.config.ROOT / "data" / "telegram-sent.txt"
 
 
 def test_send_prices_flag_sends_once_and_exits(monkeypatch, capsys):
