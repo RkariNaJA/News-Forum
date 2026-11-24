@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 import httpx
@@ -120,3 +121,123 @@ def test_message_marks_rises_unavailable_and_paxg():
     assert lines[2] == "ETH    unavailable"
     assert lines[3] == "GOLD   $3,623.25    +27.11  (+0.75%)</pre>"
     assert lines[4] == "BTC/ETH: 24h change (Binance) · Gold: 24h change (Binance PAXG)"
+
+
+# ---- sending --------------------------------------------------------------------------------------
+TOKEN = "123456:SECRET-token"
+
+
+def _tg_client(reply):
+    seen = []
+    def handler(req):
+        seen.append(req)
+        if req.url.host == "api.telegram.org":
+            return reply(req)
+        return _price_reply(req)
+    return httpx.Client(transport=httpx.MockTransport(handler)), seen
+
+
+def _price_reply(req):
+    if req.url.host == "query1.finance.yahoo.com":
+        return httpx.Response(200, json=YAHOO_OK)
+    return httpx.Response(200, json=BINANCE[req.url.params["symbol"]])
+
+
+def test_send_posts_html_message_to_the_chat():
+    client, seen = _tg_client(lambda req: httpx.Response(200, json={"ok": True, "result": {}}))
+    with client:
+        telegram.send(TOKEN, "555", "<pre>hi</pre>", client)
+    req = seen[0]
+    assert req.method == "POST" and req.url.path == f"/bot{TOKEN}/sendMessage"
+    assert json.loads(req.content) == {"chat_id": "555", "text": "<pre>hi</pre>", "parse_mode": "HTML"}
+
+
+def test_send_error_hides_token():
+    def down(req):
+        raise httpx.ConnectError(f"connection failed for {req.url}")
+    client, _ = _tg_client(down)
+    with client, pytest.raises(telegram.TelegramError) as info:
+        telegram.send(TOKEN, "555", "x", client)
+    assert TOKEN not in str(info.value) and "SECRET" not in str(info.value)
+    assert "Couldn't connect" in str(info.value)
+
+
+def test_telegram_refusal_is_readable():
+    client, _ = _tg_client(lambda req: httpx.Response(
+        400, json={"ok": False, "error_code": 400, "description": "Bad Request: chat not found"}))
+    with client, pytest.raises(telegram.TelegramError, match="Telegram refused the message: Bad Request: chat not found"):
+        telegram.send(TOKEN, "555", "x", client)
+
+
+def test_send_prices_not_set_up(tmp_path):
+    client, seen = _tg_client(lambda req: httpx.Response(200, json={"ok": True}))
+    with client:
+        status = telegram.send_prices(tmp_path / ".env", client, NOW)
+    assert status == "Not set up: add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to .env"
+    assert seen == []
+
+
+def test_send_prices_sends_the_formatted_message(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text(f"TELEGRAM_BOT_TOKEN={TOKEN}\nTELEGRAM_CHAT_ID=555\n", encoding="utf-8")
+    client, seen = _tg_client(lambda req: httpx.Response(200, json={"ok": True}))
+    with client:
+        assert telegram.send_prices(env, client, NOW) == "Sent"
+    sent = json.loads([r for r in seen if r.url.host == "api.telegram.org"][0].content)
+    assert sent["text"].startswith("📊 Prices · Tue 24 Nov 10:30\n<pre>BTC   $60,453.40")
+
+
+def test_send_prices_failure_is_a_status_without_the_token(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text(f"TELEGRAM_BOT_TOKEN={TOKEN}\nTELEGRAM_CHAT_ID=555\n", encoding="utf-8")
+    def down(req):
+        raise httpx.ConnectError(f"connection failed for {req.url}")
+    client, _ = _tg_client(down)
+    with client:
+        status = telegram.send_prices(env, client, NOW)
+    assert status.startswith("Failed:") and "SECRET" not in status
+
+
+# ---- schedule -------------------------------------------------------------------------------------
+def test_slots_are_the_agreed_times():
+    assert telegram.SLOTS == ("08:30", "10:30", "12:30", "14:30", "16:30", "17:30")
+
+
+@pytest.mark.parametrize("hm, due", [
+    ((8, 30), "2026-11-24 08:30"), ((8, 35), "2026-11-24 08:30"), ((8, 39), "2026-11-24 08:30"),
+    ((8, 40), None), ((8, 41), None), ((8, 29), None), ((17, 30), "2026-11-24 17:30"),
+    ((18, 0), None), ((18, 30), None), ((0, 0), None),
+])
+def test_due_slot_window(hm, due):
+    assert telegram.due_slot(datetime(2026, 11, 24, *hm, 15), set()) == due
+
+
+def test_due_slot_never_repeats_a_sent_slot():
+    assert telegram.due_slot(datetime(2026, 11, 24, 8, 31), {"2026-11-24 08:30"}) is None
+    assert telegram.due_slot(datetime(2026, 11, 25, 8, 31), {"2026-11-24 08:30"}) == "2026-11-25 08:30"
+
+
+def test_notifier_sends_each_slot_once_and_survives_errors(capsys):
+    calls = []
+    def flaky_send():
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("boom")
+        return "Sent"
+    clock = iter([datetime(2026, 11, 24, 8, 30), datetime(2026, 11, 24, 8, 31),   # 08:30 fails once
+                  datetime(2026, 11, 24, 9, 0),                                    # nothing due
+                  datetime(2026, 11, 24, 10, 30), datetime(2026, 11, 24, 10, 32)])  # 10:30 sent once
+    n = telegram.PriceNotifier(send=flaky_send, clock=lambda: next(clock))
+    for _ in range(5):
+        n.tick()
+    assert len(calls) == 2
+    out = capsys.readouterr().out
+    assert "08:30" in out and "RuntimeError" in out and "10:30: Sent" in out
+
+
+def test_notifier_says_not_set_up_only_once(capsys):
+    clock = iter([datetime(2026, 11, 24, 8, 30), datetime(2026, 11, 24, 10, 30)])
+    n = telegram.PriceNotifier(send=lambda: "Not set up: add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to .env",
+                               clock=lambda: next(clock))
+    n.tick(); n.tick()
+    assert capsys.readouterr().out.count("Not set up") == 1
