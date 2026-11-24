@@ -22,6 +22,7 @@ from .feeds import USER_AGENT, describe_error
 TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
 CHAT_ENV = "TELEGRAM_CHAT_ID"
 TIMEOUT = 15.0
+SEND_TIMEOUT = 40.0   # Telegram may hold a request ~33 s before answering 429; wait long enough to see it
 
 BINANCE_URL = "https://api.binance.com/api/v3/ticker/24hr"
 YAHOO_GOLD_URL = "https://query1.finance.yahoo.com/v8/finance/chart/GC=F"   # gold futures, per troy ounce
@@ -74,16 +75,21 @@ def _yahoo_gold(client: httpx.Client) -> dict:
             "note": None}
 
 
+def _reason(exc: Exception) -> str:
+    if not isinstance(exc, httpx.HTTPError):
+        return f"Unexpected reply ({type(exc).__name__})"
+    return describe_error(exc).replace("Feed moved or removed", "Not found")   # feeds' wording, for a price
+
+
 def _failure(name: str, exc: Exception) -> dict:
-    msg = describe_error(exc) if isinstance(exc, httpx.HTTPError) else f"Unexpected reply ({type(exc).__name__})"
-    return {"name": name, "error": msg}
+    return {"name": name, "error": _reason(exc)}
 
 
 _BAD_REPLY = (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError)
 
 
 def get_quotes(client: httpx.Client) -> list[dict]:
-    """BTC, ETH and GOLD, in that order. A price that can't be read becomes {"name", "error"}."""
+    """The COINS, then GOLD. A price that can't be read becomes {"name", "error"}; PAXG gold carries "why"."""
     out = []
     for name, symbol in COINS:
         try:
@@ -92,9 +98,9 @@ def get_quotes(client: httpx.Client) -> list[dict]:
             out.append(_failure(name, exc))
     try:
         out.append(_yahoo_gold(client))
-    except _BAD_REPLY:
+    except _BAD_REPLY as yahoo_exc:
         try:
-            out.append({**_binance("GOLD", GOLD_FALLBACK, client), "note": "PAXG"})
+            out.append({**_binance("GOLD", GOLD_FALLBACK, client), "note": "PAXG", "why": _reason(yahoo_exc)})
         except _BAD_REPLY as exc:
             out.append(_failure("GOLD", exc))
     return out
@@ -122,7 +128,7 @@ def format_message(quotes: list[dict], now: datetime) -> str:
 def send(token: str, chat_id: str, text: str, client: httpx.Client) -> None:
     """Post one HTML message. Raises TelegramError; the token (part of the URL) is scrubbed from it."""
     try:
-        r = client.post(SEND_URL.format(token=token),
+        r = client.post(SEND_URL.format(token=token), timeout=SEND_TIMEOUT,
                         json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
     except httpx.HTTPError as exc:
         raise TelegramError(f"Couldn't reach Telegram: {describe_error(exc)}".replace(token, "***")) from None
@@ -135,6 +141,13 @@ def send(token: str, chat_id: str, text: str, client: httpx.Client) -> None:
         raise TelegramError(f"Telegram refused the message: {why}".replace(token, "***"))
 
 
+def _gaps(quotes: list[dict]) -> str:
+    """For the log: which prices were missing and why, and whether gold came from PAXG."""
+    notes = [f"{q['name']} unavailable: {q['error']}" for q in quotes if "error" in q]
+    notes += [f"gold from PAXG, Yahoo failed: {q['why']}" for q in quotes if q.get("note") == "PAXG"]
+    return f" ({'; '.join(notes)})" if notes else ""
+
+
 def send_prices(path: Path = ENV_PATH, client: httpx.Client | None = None,
                 now: datetime | None = None) -> str:
     """Fetch the prices and send them. Returns a one-line status ("Sent", not set up, or why it failed)."""
@@ -145,8 +158,9 @@ def send_prices(path: Path = ENV_PATH, client: httpx.Client | None = None,
     own = client is None
     client = client or httpx.Client(timeout=TIMEOUT, follow_redirects=True, headers={"User-Agent": USER_AGENT})
     try:
-        send(token, chat, format_message(get_quotes(client), now or datetime.now()), client)
-        return "Sent"
+        quotes = get_quotes(client)
+        send(token, chat, format_message(quotes, now or datetime.now()), client)
+        return "Sent" + _gaps(quotes)
     except TelegramError as exc:
         return f"Failed: {exc}"
     finally:

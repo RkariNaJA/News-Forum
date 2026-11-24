@@ -85,7 +85,9 @@ def test_quotes_from_binance_and_yahoo():
 def test_gold_falls_back_to_paxg(yahoo):
     with _client(yahoo=yahoo) as c:
         gold = get_quotes(c)[-1]
+    why = gold.pop("why")
     assert gold == {"name": "GOLD", "price": 3623.25, "change": 27.11, "pct": 0.754, "note": "PAXG"}
+    assert why   # the reason Yahoo failed, for the log
 
 
 def _yahoo_meta(price, prev):
@@ -169,13 +171,13 @@ def test_message_marks_rises_unavailable_and_paxg():
 TOKEN = "123456:SECRET-token"
 
 
-def _tg_client(reply):
+def _tg_client(reply, prices=None):
     seen = []
     def handler(req):
         seen.append(req)
         if req.url.host == "api.telegram.org":
             return reply(req)
-        return _price_reply(req)
+        return (prices or _price_reply)(req)
     return httpx.Client(transport=httpx.MockTransport(handler)), seen
 
 
@@ -227,6 +229,43 @@ def test_send_prices_sends_the_formatted_message(tmp_path):
         assert telegram.send_prices(env, client, NOW) == "Sent"
     sent = json.loads([r for r in seen if r.url.host == "api.telegram.org"][0].content)
     assert sent["text"].startswith("📊 Prices · Tue 24 Nov 10:30\n<pre>BTC   $60,453.40")
+
+
+def test_send_waits_long_enough_to_see_a_rate_limit():
+    # Telegram can hold a request ~33 s before answering 429; a shorter wait reports only "Timed out"
+    client, seen = _tg_client(lambda req: httpx.Response(200, json={"ok": True}))
+    with client:
+        telegram.send(TOKEN, "555", "x", client)
+    assert seen[0].extensions["timeout"]["read"] == telegram.SEND_TIMEOUT == 40.0
+
+
+def test_rate_limit_is_named():
+    client, _ = _tg_client(lambda req: httpx.Response(429, json={
+        "ok": False, "error_code": 429, "description": "Too Many Requests: retry after 32",
+        "parameters": {"retry_after": 32}}))
+    with client, pytest.raises(telegram.TelegramError,
+                               match="Telegram refused the message: Too Many Requests: retry after 32"):
+        telegram.send(TOKEN, "555", "x", client)
+
+
+def test_status_says_what_was_missing(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text(f"TELEGRAM_BOT_TOKEN={TOKEN}\nTELEGRAM_CHAT_ID=555\n", encoding="utf-8")
+    def prices(req):
+        if req.url.host == "query1.finance.yahoo.com":
+            return httpx.Response(503)
+        symbol = req.url.params["symbol"]
+        if symbol == "ETHUSDT":
+            raise httpx.ConnectError("[SSL: UNEXPECTED_EOF_WHILE_READING] EOF")
+        if symbol == "OPUSDT":
+            return httpx.Response(404)
+        return httpx.Response(200, json=BINANCE[symbol])
+    client, _ = _tg_client(lambda req: httpx.Response(200, json={"ok": True}), prices=prices)
+    with client:
+        status = telegram.send_prices(env, client, NOW)
+    assert status == ("Sent (ETH unavailable: Couldn't connect (network or firewall); "
+                      "OP unavailable: Not found (404); "
+                      "gold from PAXG, Yahoo failed: The site is having problems (503))")
 
 
 def test_send_prices_failure_is_a_status_without_the_token(tmp_path):
