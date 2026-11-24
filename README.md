@@ -137,7 +137,8 @@ runs: a second launch sees the first and steps aside. Details, plus how to stop 
 > means no security-software sandbox to fight.
 >
 > ⚠️ **Publishers move their feeds.** If a source shows an error in *Source status* for days, its
-> URL in `feeds.json` has probably changed.
+> URL in `feeds.json` has probably changed. `py -3.13 -m pytest --live -q tests/test_feeds_live.py`
+> checks every source in about 15 seconds and says what is wrong with each failing one.
 
 **BTC ETF key (once):** sign in at <https://sosovalue.com/developer/dashboard>, click *Apply your Key*,
 and paste it after `SOSOVALUE_API_KEY=` in the `.env` file in this folder (git-ignored, so the key is

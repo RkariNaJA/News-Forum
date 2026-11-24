@@ -10,19 +10,19 @@ if str(ROOT) not in sys.path:
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
-# Tests marked "live" need internet and a browser (TradingView's widgets), so a plain run skips them.
+# Tests marked "live" need internet (the price-row tests also a browser), so a plain run skips them.
 def pytest_addoption(parser):
-    parser.addoption("--live", action="store_true", help="also run tests that need internet and a browser")
+    parser.addoption("--live", action="store_true", help="also run tests that need internet (and, for some, a browser)")
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "live: needs internet and a browser; run with --live")
+    config.addinivalue_line("markers", "live: needs internet (some also a browser); run with --live")
 
 
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--live"):
         return
-    skip = pytest.mark.skip(reason="needs internet and a browser: run with --live")
+    skip = pytest.mark.skip(reason="needs internet: run with --live")
     for item in items:
         if "live" in item.keywords:
             item.add_marker(skip)

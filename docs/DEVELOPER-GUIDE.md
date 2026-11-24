@@ -64,14 +64,15 @@ Yahoo's `GC=F` chart (gold futures, change since the previous close), else Binan
 the message then names. To add a coin, add `("NAME", "<SYMBOL>USDT")` to `COINS` (names up to 4 letters
 keep the columns lined up) and restart the app. A price that fails, or comes back zero, negative, NaN
 or infinite, shows as `unavailable` (gold tries PAXG first). An error in one pass of the timer never
-stops it. Each send is logged as `Telegram prices <slot>: <status>`. `py -3.13 -m news --send-prices`
+stops it. Each send is logged as `Telegram prices <slot>: <status>`; the status names any price that
+was unavailable and why, and why gold came from PAXG. `py -3.13 -m news --send-prices`
 sends one message now and exits, even while the app runs. The bot token is part of Telegram's URL, so
 `send` replaces it with `***` in every error.
 
 **If sends fail.** `Telegram refused the message: Bad Request: chat not found` (or `Forbidden`) means
 the chat ID is wrong, e.g. the bot's own ID (the digits before the token's colon), or the bot was never
-started. `Timed out` can hide a rate limit: Telegram may hold a request ~33 s before answering
-`429 Too Many Requests`, longer than `TIMEOUT` (15 s). From 23 Nov 2026 Telegram's Bot API answered every
+started. Telegram may hold a request ~33 s before answering `429 Too Many Requests`, so `send`
+waits `SEND_TIMEOUT` (40 s) to show it rather than `Timed out` (it waited 15 s before). From 23 Nov 2026 Telegram's Bot API answered every
 call from *new* bots this way, whatever the token or network (tdlib/telegram-bot-api issues
 #1105–#1115), while bots already in use kept working. The fix was to reuse such a bot's token.
 
@@ -439,9 +440,16 @@ Sample feeds and a sample article page (`article.html`) are in `tests/fixtures/`
 ### Live tests (`--live`)
 
 ```bat
+py -3.13 -m pytest --live -q tests/test_feeds_live.py        :: every feed, internet only
 py -3.13 -m pip install playwright          :: once; test-only, not in requirements.txt
 py -3.13 -m pytest --live -q tests/test_price_rows_live.py
 ```
+
+[`test_feeds_live.py`](../tests/test_feeds_live.py) fetches each source in `feeds.json` through
+`fetch_all` (the app's real User-Agent and timeout), one test per feed, retrying once after 3 s so a
+network blip doesn't count. A failure reads like `The Guardian: Refused by the site (403) (twice)`.
+Checked: with the old `Mozilla/...` User-Agent it fails all four Guardian feeds. Run it when a source
+looks wrong.
 
 [`test_price_rows_live.py`](../tests/test_price_rows_live.py) needs internet (TradingView) and drives
 Microsoft Edge through Playwright, falling back to Playwright's own Chromium if Edge won't start. It

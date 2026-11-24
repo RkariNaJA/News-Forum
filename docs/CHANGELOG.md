@@ -117,3 +117,8 @@
 - **2026-11-24**: ADA (`ADAUSDT`) and OP (`OPUSDT`) added to the Telegram message, at the user's
   request. Prices under $1 show 4 decimals (OP moved $0.0001 in a day; 2 decimals showed `+0.00`). The
   source note now reads "Crypto: 24h change (Binance)".
+- **2026-11-24**: Telegram sends wait 40 s instead of 15, so Telegram's ~33 s hold before a 429 shows
+  as "Too Many Requests" instead of "Timed out". The logged status names missing prices and why, and why
+  gold came from PAXG. New `tests/test_feeds_live.py` (`--live`, internet only): one test per feed
+  through the real client, with one retry after 3 s. Its first run caught a one-off failure of MIT Tech
+  Review AI, hence the retry. With the old browser User-Agent it fails all four Guardian feeds.
