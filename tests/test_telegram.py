@@ -82,6 +82,29 @@ def test_gold_falls_back_to_paxg(yahoo):
     assert gold == {"name": "GOLD", "price": 3623.25, "change": 27.11, "pct": 0.754, "note": "PAXG"}
 
 
+def _yahoo_meta(price, prev):
+    # json.dumps writes NaN / Infinity as a real server might (httpx's json= refuses them)
+    body = json.dumps({"chart": {"result": [{"meta": {"regularMarketPrice": price, "chartPreviousClose": prev}}]}})
+    return lambda req: httpx.Response(200, content=body.encode(), headers={"content-type": "application/json"})
+
+
+@pytest.mark.parametrize("price, prev", [
+    (3629.3, 0), (float("nan"), 3651.4), (3629.3, float("inf")), (-1.0, 3651.4), (0, 3651.4),
+])
+def test_bad_yahoo_numbers_fall_back_to_paxg(price, prev):
+    with _client(yahoo=_yahoo_meta(price, prev)) as c:
+        gold = get_quotes(c)[2]
+    assert gold["note"] == "PAXG" and gold["price"] == 3623.25
+
+
+@pytest.mark.parametrize("field, value", [("lastPrice", "nan"), ("lastPrice", "0"), ("priceChange", "inf")])
+def test_bad_binance_numbers_make_that_price_unavailable(monkeypatch, field, value):
+    monkeypatch.setitem(BINANCE, "BTCUSDT", {**BINANCE["BTCUSDT"], field: value})
+    with _client() as c:
+        btc, eth, _ = get_quotes(c)
+    assert btc["name"] == "BTC" and btc["error"] and eth["price"] == 3012.10
+
+
 def test_one_failed_price_keeps_the_others():
     with _client(binance_down=("ETHUSDT",)) as c:
         btc, eth, gold = get_quotes(c)
@@ -241,3 +264,27 @@ def test_notifier_says_not_set_up_only_once(capsys):
                                clock=lambda: next(clock))
     n.tick(); n.tick()
     assert capsys.readouterr().out.count("Not set up") == 1
+
+
+class _StopLoop(BaseException):
+    pass
+
+
+def test_loop_keeps_running_after_an_error_outside_send(monkeypatch):
+    # e.g. the log file failing to write: the timer must not die silently for the rest of the session
+    naps = []
+    def nap(seconds):
+        naps.append(seconds)
+        if len(naps) == 3:
+            raise _StopLoop
+    monkeypatch.setattr(telegram.time, "sleep", nap)
+    calls = []
+    def clock():
+        calls.append(1)
+        if len(calls) == 1:
+            raise OSError("log file unavailable")
+        return datetime(2026, 11, 24, 9, 0)
+    n = telegram.PriceNotifier(send=lambda: "Sent", clock=clock, poll_seconds=30)
+    with pytest.raises(_StopLoop):
+        n._run()
+    assert len(calls) == 3 and naps == [30, 30, 30]

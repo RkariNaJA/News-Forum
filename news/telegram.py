@@ -6,6 +6,7 @@ project's git-ignored .env). With either missing, nothing is sent. The token is 
 from __future__ import annotations
 
 import html
+import math
 import os
 import threading
 import time
@@ -48,19 +49,27 @@ def read_settings(path: Path = ENV_PATH) -> tuple[str, str] | None:
 
 
 # ---- prices ---------------------------------------------------------------------------------------
+def _num(value, positive: bool = False) -> float:
+    """A finite number from a price API (a price must also be > 0); anything else raises ValueError."""
+    x = float(value)
+    if not math.isfinite(x) or (positive and x <= 0):
+        raise ValueError(f"bad number {value!r}")
+    return x
+
+
 def _binance(name: str, symbol: str, client: httpx.Client) -> dict:
     r = client.get(BINANCE_URL, params={"symbol": symbol})
     r.raise_for_status()
     j = r.json()
-    return {"name": name, "price": float(j["lastPrice"]), "change": float(j["priceChange"]),
-            "pct": float(j["priceChangePercent"]), "note": None}
+    return {"name": name, "price": _num(j["lastPrice"], positive=True), "change": _num(j["priceChange"]),
+            "pct": _num(j["priceChangePercent"]), "note": None}
 
 
 def _yahoo_gold(client: httpx.Client) -> dict:
     r = client.get(YAHOO_GOLD_URL, params={"range": "1d", "interval": "1d"})
     r.raise_for_status()
     meta = r.json()["chart"]["result"][0]["meta"]
-    price, prev = float(meta["regularMarketPrice"]), float(meta["chartPreviousClose"])
+    price, prev = _num(meta["regularMarketPrice"], positive=True), _num(meta["chartPreviousClose"], positive=True)
     return {"name": "GOLD", "price": price, "change": price - prev, "pct": (price - prev) / prev * 100,
             "note": None}
 
@@ -181,7 +190,10 @@ class PriceNotifier:
 
     def _run(self) -> None:
         while True:
-            self.tick()
+            try:
+                self.tick()
+            except Exception:  # e.g. the log file can't be written: keep the timer alive for later slots
+                pass
             time.sleep(self._poll)
 
     def start(self) -> None:
