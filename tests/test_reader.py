@@ -93,6 +93,31 @@ def test_download_maps_refusals_to_readable_errors():
             download(URL, c)
 
 
+def test_403_to_browser_ua_is_retried_with_plain_ua():
+    # The Guardian refuses a browser UA sent from a non-browser client, but serves an honest one.
+    seen = []
+    def handler(req):
+        seen.append(req.headers["user-agent"])
+        if req.headers["user-agent"].startswith("Mozilla/"):
+            return httpx.Response(403, text="Forbidden")
+        return httpx.Response(200, headers={"content-type": "text/html"}, text=ARTICLE)
+    with _client(handler) as c:
+        assert "Leaders agree on trade deal" in download(URL, c)
+    assert seen == [reader.PAGE_USER_AGENT, reader.PLAIN_USER_AGENT]
+
+
+@pytest.mark.parametrize("status", [401, 429, 451, 500])
+def test_other_errors_are_not_retried(status):
+    seen = []
+    def handler(req):
+        seen.append(req)
+        return httpx.Response(status, text="no")
+    with _client(handler) as c:
+        with pytest.raises(ReaderError):
+            download(URL, c)
+    assert len(seen) == 1
+
+
 def test_download_returns_html():
     with _client(lambda req: httpx.Response(200, headers={"content-type": "text/html; charset=utf-8"},
                                             text=ARTICLE)) as c:

@@ -101,3 +101,9 @@ def test_undated_feeds_are_capped():
     items = "".join(f"<item><title>T{i}</title><link>https://a.com/{i}</link></item>" for i in range(50))
     arts = parse_feed(f"<rss><channel>{items}</channel></rss>".encode(), WORLD, now=NOW)
     assert [a["title"] for a in arts] == [f"T{i}" for i in range(UNDATED_MAX)]   # the newest, in feed order
+
+
+def test_feed_user_agent_does_not_pose_as_a_browser():
+    # The Guardian answers 403 to a "Mozilla/..." UA from a non-browser client (Nov 2026).
+    from news.feeds import USER_AGENT
+    assert not USER_AGENT.startswith("Mozilla/")

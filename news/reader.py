@@ -11,6 +11,8 @@ import trafilatura
 # A normal browser UA: several publishers refuse unknown clients for article pages.
 PAGE_USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                    "(KHTML, like Gecko) Chrome/130.0 Safari/537.36")
+# Tried after a 403: the Guardian refuses a browser UA from a non-browser client but serves this.
+PLAIN_USER_AGENT = "NewsForum/1.0 (personal RSS reader)"
 PAGE_TIMEOUT = 20.0
 MAX_PAGE_BYTES = 5_000_000
 MIN_TEXT_CHARS = 400        # less than this is a paywall teaser or a failed extraction
@@ -22,6 +24,10 @@ MAX_TEXT_CHARS = 40_000
 
 class ReaderError(Exception):
     """The article could not be fetched or no readable story text was found."""
+
+
+class _Forbidden(ReaderError):
+    """A 403: worth one more try with the plain user agent."""
 
 
 def _resolve(host: str) -> list[str]:
@@ -56,13 +62,25 @@ def download(url: str, client: httpx.Client | None = None) -> str:
     own = client is None
     client = client or httpx.Client(
         timeout=PAGE_TIMEOUT, follow_redirects=True, max_redirects=5,
-        headers={"User-Agent": PAGE_USER_AGENT, "Accept": "text/html,application/xhtml+xml",
-                 "Accept-Language": "en-US,en;q=0.9"},
+        headers={"Accept": "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9"},
         # every hop of a redirect chain is checked, not just the first and last
         event_hooks={"request": [lambda req: check_url(str(req.url))]})
     try:
-        with client.stream("GET", url) as resp:
-            if resp.status_code in (401, 402, 403, 405, 429, 451):
+        try:
+            return _fetch(client, url, PAGE_USER_AGENT)
+        except _Forbidden:
+            return _fetch(client, url, PLAIN_USER_AGENT)
+    finally:
+        if own:
+            client.close()
+
+
+def _fetch(client: httpx.Client, url: str, user_agent: str) -> str:
+    try:
+        with client.stream("GET", url, headers={"User-Agent": user_agent}) as resp:
+            if resp.status_code == 403:
+                raise _Forbidden("The site refused the request (403)")
+            if resp.status_code in (401, 402, 405, 429, 451):
                 raise ReaderError(f"The site refused the request ({resp.status_code})")
             if resp.status_code >= 400:
                 raise ReaderError(f"The site returned an error ({resp.status_code})")
@@ -77,9 +95,6 @@ def download(url: str, client: httpx.Client | None = None) -> str:
             return body.decode(resp.encoding or "utf-8", errors="replace")
     except httpx.HTTPError as exc:
         raise ReaderError(f"Couldn't reach the site ({type(exc).__name__})") from exc
-    finally:
-        if own:
-            client.close()
 
 
 def extract(html: str, url: str) -> dict:

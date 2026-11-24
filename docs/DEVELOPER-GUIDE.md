@@ -63,7 +63,7 @@ refetches everything (you lose read/saved marks).
 3. A non-blocking lock allows one refresh at a time. A second caller gets `{"busy": true}` straight
    away instead of starting a duplicate fetch.
 4. [`feeds.fetch_all`](../news/feeds.py) shares one `httpx.Client` (20 s timeout, redirects on,
-   browser-like User-Agent) across 8 worker threads. Each feed returns `(articles, error)`. HTTP
+   plain `NewsForum/1.0` User-Agent, never a `Mozilla/...` one, which the Guardian refuses) across 8 worker threads. Each feed returns `(articles, error)`. HTTP
    errors, empty feeds and even parser exceptions become an error string for that feed only.
 5. `parse_feed` turns each entry into an article:
    - **link**: must be `http(s)` with a host, or the entry is dropped. Lower-cases the host, removes
@@ -115,8 +115,9 @@ Clicking a card anywhere except the headline link or its buttons calls `openRead
      that can't be found gives "Couldn't find the site". It runs as an httpx **request hook**, so **every redirect hop** is checked, not just the first
      link.
    - **`download`** uses a browser User-Agent, a 20 s timeout and at most 5 redirects, and streams
-     the page with a 5 MB cap. The status codes 401/402/403/405/429/451 become "The site refused the
-     request (n)". A response that isn't HTML is refused.
+     the page with a 5 MB cap. A 403 is retried once with the plain `NewsForum/1.0` User-Agent (the
+     Guardian refuses a browser one from a non-browser client). The status codes
+     401/402/403/405/429/451 become "The site refused the request (n)". A response that isn't HTML is refused.
    - **`extract`** calls `trafilatura.bare_extraction` with precision on, and without comments,
      tables or images. That gives the text plus the page's `author`, `date` and `image`. Then:
      - Before the story starts, it skips the headline, the byline and any line under 30 characters

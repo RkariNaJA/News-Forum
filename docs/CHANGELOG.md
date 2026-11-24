@@ -90,3 +90,8 @@
   FedWatch method) and this changelog. Two bullets that had ended up under the FedWatch heading (the
   day-chart pop-up and keyboard shortcuts) went back where they belong. BTC ETF gets a **daily net
   inflow** bar chart from the daily totals it already downloaded. Page files `?v=15`.
+- **2026-11-24**: The four Guardian feeds stopped loading: the Guardian now answers 403 to a
+  `Mozilla/...` User-Agent sent from a non-browser client (curl with the same UA still got 200). The
+  feed User-Agent is now plain `NewsForum/1.0 (personal RSS reader)`; checked against all 25 feeds,
+  only the Guardian's changed (403 → 200). The reader keeps its Chrome User-Agent but retries a 403
+  once with the plain one, so Guardian articles open in full again.

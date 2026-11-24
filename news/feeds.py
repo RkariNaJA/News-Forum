@@ -15,7 +15,8 @@ import httpx
 
 from .config import CATEGORIES
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) NewsForum/1.0 (personal RSS reader)"
+# Not "Mozilla/...": the Guardian refuses (403) a browser-looking UA sent from a non-browser client.
+USER_AGENT = "NewsForum/1.0 (personal RSS reader)"
 TIMEOUT = 20.0
 SUMMARY_MAX = 320        # card blurb
 FEED_TEXT_MAX = 6000     # full feed text kept for the reader pop-up
