@@ -1,7 +1,11 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from news.feeds import UNDATED_MAX, clean_text, load_feeds, normalize_link, parse_feed
+import httpx
+import pytest
+
+from news.feeds import UNDATED_MAX, clean_text, fetch_feed, load_feeds, normalize_link, parse_feed
+from news.feeds import USER_AGENT
 from conftest import FIXTURES
 
 NOW = datetime(2026, 11, 16, 12, 0, tzinfo=timezone.utc)
@@ -105,5 +109,37 @@ def test_undated_feeds_are_capped():
 
 def test_feed_user_agent_does_not_pose_as_a_browser():
     # The Guardian answers 403 to a "Mozilla/..." UA from a non-browser client (Nov 2026).
-    from news.feeds import USER_AGENT
     assert not USER_AGENT.startswith("Mozilla/")
+
+
+def _fetch_with(handler):
+    with httpx.Client(transport=httpx.MockTransport(handler)) as c:
+        return fetch_feed(WORLD, c)
+
+
+def _raise(exc):
+    def handler(req):
+        raise exc
+    return handler
+
+
+@pytest.mark.parametrize("handler, message", [
+    (lambda req: httpx.Response(403), "Refused by the site (403)"),
+    (lambda req: httpx.Response(401), "Refused by the site (401)"),
+    (lambda req: httpx.Response(404), "Feed moved or removed (404)"),
+    (lambda req: httpx.Response(410), "Feed moved or removed (410)"),
+    (lambda req: httpx.Response(429), "Too many requests, the site asked us to slow down (429)"),
+    (lambda req: httpx.Response(503), "The site is having problems (503)"),
+    (lambda req: httpx.Response(418), "The site returned an error (418)"),
+    (_raise(httpx.ConnectTimeout("timed out")), "Timed out"),
+    (_raise(httpx.ReadTimeout("timed out")), "Timed out"),
+    (_raise(httpx.ConnectError("[Errno 11001] getaddrinfo failed")), "Couldn't find the site"),
+    (_raise(httpx.ConnectError("[SSL: UNEXPECTED_EOF_WHILE_READING] EOF")),
+     "Couldn't connect (network or firewall)"),
+    (_raise(httpx.TooManyRedirects("loop")), "Too many redirects"),
+    (_raise(httpx.RemoteProtocolError("bad")), "Network error (RemoteProtocolError)"),
+    (lambda req: httpx.Response(200, content=b"<html>not a feed</html>"),
+     "No readable stories in the feed (its format may have changed)"),
+])
+def test_feed_errors_are_short_plain_messages(handler, message):
+    assert _fetch_with(handler) == ([], message)

@@ -1,7 +1,10 @@
-fastapi
-uvicorn
-httpx
-feedparser
-trafilatura
-pytest
-tzdata
+# Exact versions the app and its tests were last checked with (2026-11-24, Python 3.13).
+# To upgrade: change a number, reinstall, then run the tests.
+fastapi==0.138.2
+starlette==1.3.1        # installed by fastapi; pinned because the test client depends on it
+uvicorn==0.49.0
+httpx==0.28.1
+feedparser==6.0.14
+trafilatura==2.3.1
+pytest==9.1.1
+tzdata==2025.2

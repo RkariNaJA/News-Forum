@@ -165,16 +165,41 @@ def _feed_text(entry, summary_html: str) -> str:
     return "\n".join(out)
 
 
+def describe_error(exc: httpx.HTTPError) -> str:
+    """A short, plain message for the banner and Source status: says whether the site refused us,
+    the feed moved, or the network failed (these need different fixes)."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if code in (401, 403, 451):
+            return f"Refused by the site ({code})"
+        if code in (404, 410):
+            return f"Feed moved or removed ({code})"
+        if code == 429:
+            return f"Too many requests, the site asked us to slow down ({code})"
+        if code >= 500:
+            return f"The site is having problems ({code})"
+        return f"The site returned an error ({code})"
+    if isinstance(exc, httpx.TimeoutException):
+        return "Timed out"
+    if isinstance(exc, httpx.ConnectError):
+        return "Couldn't find the site" if "getaddrinfo" in str(exc) else "Couldn't connect (network or firewall)"
+    if isinstance(exc, httpx.TooManyRedirects):
+        return "Too many redirects"
+    return f"Network error ({type(exc).__name__})"
+
+
 def fetch_feed(feed: dict, client: httpx.Client) -> tuple[list[dict], str | None]:
     """Download and parse one feed. Returns (articles, error message or None)."""
     try:
         resp = client.get(feed["url"])
         resp.raise_for_status()
     except httpx.HTTPError as exc:
-        return [], f"{type(exc).__name__}: {str(exc)[:150]}"
+        # the raw text goes to the log (data/news-forum.log when windowless) for debugging
+        print(f"Feed {feed['name']}: {type(exc).__name__}: {str(exc)[:300]}", flush=True)
+        return [], describe_error(exc)
     articles = parse_feed(resp.content, feed)
     if not articles:
-        return [], "Feed returned no readable articles"
+        return [], "No readable stories in the feed (its format may have changed)"
     return articles, None
 
 

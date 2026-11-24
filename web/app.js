@@ -298,10 +298,9 @@ async function refresh(force, auto = false) {
   btn.disabled = true; btn.textContent = "Fetching…";
   try {
     const r = await api(`/api/refresh?force=${force}`, { method: "POST" });
-    const errs = Object.entries(r.errors || {});
     const alert = $("#feed-alert");
-    alert.hidden = !errs.length;
-    alert.textContent = errs.length ? `Couldn't reach ${errs.map(([n]) => n).join(", ")} this time. Other sources are fine.` : "";
+    alert.textContent = refreshAlert(r);
+    alert.hidden = !alert.textContent;
     store("lastRefresh", new Date().toISOString());
     if (auto && r.new) newSinceShown += r.new;
   } catch (e) {
@@ -314,6 +313,18 @@ async function refresh(force, auto = false) {
     checkHealth();
     if (auto) { await loadCounts(); showNewBar(); } else await load();
   }
+}
+
+// Feeds that failed for the same reason share one line: "The Guardian, Guardian AI: Refused by the site (403)".
+function refreshAlert(r) {
+  const errs = Object.entries(r.errors || {});
+  if (!errs.length) return "";
+  const byReason = {};
+  for (const [name, msg] of errs) (byReason[msg] ||= []).push(name);
+  if (errs.length > 1 && errs.length === r.fetched)
+    return `No source could be updated (${Object.keys(byReason).join("; ")}). Check the internet connection.`;
+  const parts = Object.entries(byReason).map(([msg, names]) => `${names.join(", ")}: ${msg}`);
+  return `Couldn't update ${parts.join(" · ")}. Other sources are fine.`;
 }
 
 function showNewBar() {

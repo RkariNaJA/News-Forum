@@ -95,3 +95,9 @@
   feed User-Agent is now plain `NewsForum/1.0 (personal RSS reader)`; checked against all 25 feeds,
   only the Guardian's changed (403 → 200). The reader keeps its Chrome User-Agent but retries a 403
   once with the plain one, so Guardian articles open in full again.
+- **2026-11-24**: Feed errors are short plain messages that say what went wrong ("Refused by the site
+  (403)", "Feed moved or removed (404)", "Timed out", "Couldn't connect (network or firewall)"...)
+  instead of raw httpx text, and the raw text goes to the log. The refresh banner groups feeds by
+  reason instead of saying "Couldn't reach" for everything, and says to check the internet
+  connection when every feed fails. `requirements.txt` pins exact versions (plus Starlette, which the
+  test client depends on). Page files `?v=16`.

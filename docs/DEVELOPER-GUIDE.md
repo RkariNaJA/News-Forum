@@ -13,7 +13,7 @@ Requirements: Windows with the `py` launcher and Python 3.13, and internet acces
 
 ```bat
 cd "News Forum"
-py -3.13 -m pip install -r requirements.txt     :: fastapi, uvicorn, httpx, feedparser, trafilatura, pytest
+py -3.13 -m pip install -r requirements.txt     :: exact pinned versions of fastapi, uvicorn, httpx, feedparser, trafilatura, pytest
 "Start News Forum.bat"                          :: = py -3.13 -m news
 ```
 
@@ -63,8 +63,13 @@ refetches everything (you lose read/saved marks).
 3. A non-blocking lock allows one refresh at a time. A second caller gets `{"busy": true}` straight
    away instead of starting a duplicate fetch.
 4. [`feeds.fetch_all`](../news/feeds.py) shares one `httpx.Client` (20 s timeout, redirects on,
-   plain `NewsForum/1.0` User-Agent, never a `Mozilla/...` one, which the Guardian refuses) across 8 worker threads. Each feed returns `(articles, error)`. HTTP
-   errors, empty feeds and even parser exceptions become an error string for that feed only.
+   plain `NewsForum/1.0` User-Agent, never a `Mozilla/...` one, which the Guardian refuses) across
+   8 worker threads. Each feed returns `(articles, error)`. HTTP errors, empty feeds and even parser
+   exceptions become an error for that feed only. `describe_error` makes it a short plain message
+   that says what to fix: "Refused by the site (403)", "Feed moved or removed (404)", "Timed out",
+   "Couldn't connect (network or firewall)", "No readable stories in the feed (its format may have
+   changed)" and so on. The raw exception goes to the log. The refresh banner groups feeds by
+   message, and when every feed fails it says to check the internet connection.
 5. `parse_feed` turns each entry into an article:
    - **link**: must be `http(s)` with a host, or the entry is dropped. Lower-cases the host, removes
      the fragment and any query parameter starting with `utm_`, `at_`, `ito`, `cmpid`, `taid` or
@@ -278,7 +283,7 @@ Plain HTML/CSS/JS, no build step, as six classic scripts that share globals, loa
 [`web/feargreed.js`](../web/feargreed.js) (the Fear & Greed panel),
 [`web/prices.js`](../web/prices.js) (price pages and the chart pop-up),
 [`web/app.js`](../web/app.js) (everything else) and [`web/keys.js`](../web/keys.js) (keyboard shortcuts).
-`index.html` loads them, and `style.css`, with a version query (`?v=15`). **Raise that number whenever you
+`index.html` loads them, and `style.css`, with a version query (`?v=16`). **Raise that number whenever you
 change a JS or CSS file**, so a browser holding an older copy fetches the new one.
 
 [`web/app.js`](../web/app.js):
