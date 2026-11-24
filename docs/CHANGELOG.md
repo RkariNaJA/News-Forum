@@ -114,3 +114,6 @@
   after a ~33 s hang, shown as "Timed out", even with a revoked token, a second new bot and mobile
   data. This was a Telegram-side problem with new bots since 23 Nov (tdlib/telegram-bot-api #1105–#1115).
   Worked around by using the user's existing, working bot, and the first message was sent.
+- **2026-11-24**: ADA (`ADAUSDT`) and OP (`OPUSDT`) added to the Telegram message, at the user's
+  request. Prices under $1 show 4 decimals (OP moved $0.0001 in a day; 2 decimals showed `+0.00`). The
+  source note now reads "Crypto: 24h change (Binance)".

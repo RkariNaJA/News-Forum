@@ -54,17 +54,19 @@ refetches everything (you lose read/saved marks).
 
 ### Telegram price messages
 
-[`news/telegram.py`](../news/telegram.py) sends BTC, ETH and gold (price, change, % change) to a
-Telegram chat every day at `SLOTS` = 08:30, 10:30, 12:30, 14:30, 16:30 and 17:30, PC time.
-`PriceNotifier` is a daemon thread started by `__main__` just before uvicorn (never by `create_app`,
-so tests don't start it). It checks the clock every 30 s; a slot seen more than `GRACE_MINUTES` (10)
-late, because the PC was off or asleep, is skipped, and each slot is sent once even if it fails.
-BTC/ETH come from Binance's `ticker/24hr` (24 h change); gold from Yahoo's `GC=F` chart (gold
-futures, change since the previous close), else Binance `PAXGUSDT`, which the message then names. A
-price that fails, or comes back zero, negative, NaN or infinite, shows as `unavailable` (gold tries PAXG
-first). An error in one pass of the timer never stops it. Each send is logged as `Telegram prices <slot>: <status>`.
-`py -3.13 -m news --send-prices` sends one message now and exits, even while the app runs. The bot
-token is part of Telegram's URL, so `send` replaces it with `***` in every error.
+[`news/telegram.py`](../news/telegram.py) sends BTC, ETH, ADA, OP and gold (price, change, % change) to
+a Telegram chat every day at `SLOTS` = 08:30, 10:30, 12:30, 14:30, 16:30 and 17:30, PC time.
+`PriceNotifier` is a daemon thread started by `__main__` just before uvicorn (never by `create_app`, so
+tests don't start it). It checks the clock every 30 s; a slot seen more than `GRACE_MINUTES` (10) late,
+because the PC was off or asleep, is skipped, and each slot is sent once even if it fails. The coins
+(`COINS`) come from Binance's `ticker/24hr` (24 h change; prices under $1 get 4 decimals); gold from
+Yahoo's `GC=F` chart (gold futures, change since the previous close), else Binance `PAXGUSDT`, which
+the message then names. To add a coin, add `("NAME", "<SYMBOL>USDT")` to `COINS` (names up to 4 letters
+keep the columns lined up) and restart the app. A price that fails, or comes back zero, negative, NaN
+or infinite, shows as `unavailable` (gold tries PAXG first). An error in one pass of the timer never
+stops it. Each send is logged as `Telegram prices <slot>: <status>`. `py -3.13 -m news --send-prices`
+sends one message now and exits, even while the app runs. The bot token is part of Telegram's URL, so
+`send` replaces it with `***` in every error.
 
 **If sends fail.** `Telegram refused the message: Bad Request: chat not found` (or `Forbidden`) means
 the chat ID is wrong, e.g. the bot's own ID (the digits before the token's colon), or the bot was never
@@ -424,7 +426,8 @@ py -3.13 -m pytest -q
 - [`test_telegram.py`](../tests/test_telegram.py): settings needing both values, quotes from faked
   Binance and Yahoo answers, the PAXG fallback, a failed price shown as `unavailable`, the exact
   message, bad numbers (zero, NaN, infinite) falling back or shown as `unavailable`, the token never in
-  an error, Telegram refusals, the slot window, each slot sent once, and the timer surviving errors.
+  an error, Telegram refusals, the slot window, each slot sent once, the timer surviving errors, and
+  4 decimals under $1 (ADA, OP).
 - [`test_feargreed.py`](../tests/test_feargreed.py): history ordered oldest first, today's value and
   label, the next-update time, changed or empty data rejected, the hour-long cache, and the last answer
   kept when a later fetch fails.
@@ -479,7 +482,7 @@ News Forum/
 │   ├── highlights.py        ← key sentences for the pop-up highlights (TF-IDF, no AI)
 │   ├── reader.py            ← reader view: safe page download + story extraction
 │   ├── store.py             ← SQLite (articles, feed status, reader cache)
-│   ├── telegram.py          ← Telegram price messages (BTC, ETH, gold) at fixed times
+│   ├── telegram.py          ← Telegram price messages (BTC, ETH, ADA, OP, gold)
 │   └── server.py            ← FastAPI routes
 ├── web/                     ← index.html, style.css, etf.js, fedwatch.js, feargreed.js, prices.js, app.js, keys.js
 ├── Pic/                     ← README screenshots

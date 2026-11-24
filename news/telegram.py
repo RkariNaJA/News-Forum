@@ -1,4 +1,4 @@
-"""Telegram price messages: BTC, ETH and gold sent to the user's bot at fixed times of day.
+"""Telegram price messages: BTC, ETH, ADA, OP and gold sent to the user's bot at fixed times of day.
 
 The bot token and chat id come from TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID (environment first, else the
 project's git-ignored .env). With either missing, nothing is sent. The token is never logged.
@@ -25,7 +25,7 @@ TIMEOUT = 15.0
 
 BINANCE_URL = "https://api.binance.com/api/v3/ticker/24hr"
 YAHOO_GOLD_URL = "https://query1.finance.yahoo.com/v8/finance/chart/GC=F"   # gold futures, per troy ounce
-COINS = (("BTC", "BTCUSDT"), ("ETH", "ETHUSDT"))
+COINS = (("BTC", "BTCUSDT"), ("ETH", "ETHUSDT"), ("ADA", "ADAUSDT"), ("OP", "OPUSDT"))
 GOLD_FALLBACK = "PAXGUSDT"   # a Binance token backed by gold; used when Yahoo fails
 SEND_URL = "https://api.telegram.org/bot{token}/sendMessage"
 
@@ -104,7 +104,9 @@ def get_quotes(client: httpx.Client) -> list[dict]:
 def _line(q: dict) -> str:
     if "error" in q:
         return f"{q['name']:<4}   unavailable"
-    return f"{q['name']:<4} {'$' + format(q['price'], ',.2f'):>11} {q['change']:>+9,.2f}  ({q['pct']:+.2f}%)"
+    d = 4 if q["price"] < 1 else 2   # ADA, OP trade under $1: 2 decimals would hide the change
+    return (f"{q['name']:<4} {'$' + format(q['price'], f',.{d}f'):>11} {format(q['change'], f'+,.{d}f'):>9}"
+            f"  ({q['pct']:+.2f}%)")
 
 
 def format_message(quotes: list[dict], now: datetime) -> str:
@@ -113,7 +115,7 @@ def format_message(quotes: list[dict], now: datetime) -> str:
     paxg = any(q.get("note") == "PAXG" for q in quotes)
     gold = "24h change (Binance PAXG)" if paxg else "since previous close (Yahoo gold futures)"
     return (f"📊 Prices · {now:%a %d %b %H:%M}\n<pre>{rows}</pre>\n"
-            f"BTC/ETH: 24h change (Binance) · Gold: {gold}")
+            f"Crypto: 24h change (Binance) · Gold: {gold}")
 
 
 # ---- sending --------------------------------------------------------------------------------------

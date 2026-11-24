@@ -42,6 +42,8 @@ def test_settings_from_env_file_and_environment(tmp_path, monkeypatch):
 BINANCE = {
     "BTCUSDT": {"lastPrice": "60453.40", "priceChange": "-853.79", "priceChangePercent": "-1.393"},
     "ETHUSDT": {"lastPrice": "3012.10", "priceChange": "-40.22", "priceChangePercent": "-1.318"},
+    "ADAUSDT": {"lastPrice": "0.14890000", "priceChange": "0.00300000", "priceChangePercent": "2.056"},
+    "OPUSDT": {"lastPrice": "0.07170000", "priceChange": "0.00010000", "priceChangePercent": "0.140"},
     "PAXGUSDT": {"lastPrice": "3623.25", "priceChange": "27.11", "priceChangePercent": "0.754"},
 }
 YAHOO_OK = {"chart": {"result": [{"meta": {"regularMarketPrice": 3629.3, "chartPreviousClose": 3651.4}}]}}
@@ -61,9 +63,13 @@ def _client(yahoo=lambda req: httpx.Response(200, json=YAHOO_OK), binance_down=(
 
 def test_quotes_from_binance_and_yahoo():
     with _client() as c:
-        btc, eth, gold = get_quotes(c)
+        quotes = get_quotes(c)
+    assert [q["name"] for q in quotes] == ["BTC", "ETH", "ADA", "OP", "GOLD"]
+    btc, eth, ada, op, gold = quotes
     assert btc == {"name": "BTC", "price": 60453.40, "change": -853.79, "pct": -1.393, "note": None}
-    assert eth["name"] == "ETH" and eth["price"] == 3012.10
+    assert eth["price"] == 3012.10
+    assert ada == {"name": "ADA", "price": 0.1489, "change": 0.003, "pct": 2.056, "note": None}
+    assert op == {"name": "OP", "price": 0.0717, "change": 0.0001, "pct": 0.14, "note": None}
     assert gold["name"] == "GOLD" and gold["price"] == 3629.3 and gold["note"] is None
     assert gold["change"] == pytest.approx(-22.1)
     assert gold["pct"] == pytest.approx(-22.1 / 3651.4 * 100)
@@ -78,7 +84,7 @@ def test_quotes_from_binance_and_yahoo():
 ])
 def test_gold_falls_back_to_paxg(yahoo):
     with _client(yahoo=yahoo) as c:
-        gold = get_quotes(c)[2]
+        gold = get_quotes(c)[-1]
     assert gold == {"name": "GOLD", "price": 3623.25, "change": 27.11, "pct": 0.754, "note": "PAXG"}
 
 
@@ -93,7 +99,7 @@ def _yahoo_meta(price, prev):
 ])
 def test_bad_yahoo_numbers_fall_back_to_paxg(price, prev):
     with _client(yahoo=_yahoo_meta(price, prev)) as c:
-        gold = get_quotes(c)[2]
+        gold = get_quotes(c)[-1]
     assert gold["note"] == "PAXG" and gold["price"] == 3623.25
 
 
@@ -101,20 +107,20 @@ def test_bad_yahoo_numbers_fall_back_to_paxg(price, prev):
 def test_bad_binance_numbers_make_that_price_unavailable(monkeypatch, field, value):
     monkeypatch.setitem(BINANCE, "BTCUSDT", {**BINANCE["BTCUSDT"], field: value})
     with _client() as c:
-        btc, eth, _ = get_quotes(c)
+        btc, eth = get_quotes(c)[:2]
     assert btc["name"] == "BTC" and btc["error"] and eth["price"] == 3012.10
 
 
 def test_one_failed_price_keeps_the_others():
     with _client(binance_down=("ETHUSDT",)) as c:
-        btc, eth, gold = get_quotes(c)
-    assert btc["price"] == 60453.40 and gold["price"] == 3629.3
+        btc, eth, ada, op, gold = get_quotes(c)
+    assert btc["price"] == 60453.40 and ada["price"] == 0.1489 and gold["price"] == 3629.3
     assert eth["name"] == "ETH" and eth["error"] and "price" not in eth
 
 
 def test_gold_unavailable_when_both_sources_fail():
     with _client(yahoo=lambda req: httpx.Response(503), binance_down=("PAXGUSDT",)) as c:
-        gold = get_quotes(c)[2]
+        gold = get_quotes(c)[-1]
     assert gold["name"] == "GOLD" and gold["error"]
 
 
@@ -122,6 +128,8 @@ def test_gold_unavailable_when_both_sources_fail():
 QUOTES = [
     {"name": "BTC", "price": 60453.40, "change": -853.79, "pct": -1.393, "note": None},
     {"name": "ETH", "price": 3012.10, "change": -40.22, "pct": -1.318, "note": None},
+    {"name": "ADA", "price": 0.1489, "change": 0.003, "pct": 2.056, "note": None},
+    {"name": "OP", "price": 0.0717, "change": 0.0001, "pct": 0.14, "note": None},
     {"name": "GOLD", "price": 3629.3, "change": -22.1, "pct": -0.6052, "note": None},
 ]
 
@@ -131,8 +139,19 @@ def test_message_format():
         "📊 Prices · Tue 24 Nov 10:30\n"
         "<pre>BTC   $60,453.40   -853.79  (-1.39%)\n"
         "ETH    $3,012.10    -40.22  (-1.32%)\n"
+        "ADA      $0.1489   +0.0030  (+2.06%)\n"
+        "OP       $0.0717   +0.0001  (+0.14%)\n"
         "GOLD   $3,629.30    -22.10  (-0.61%)</pre>\n"
-        "BTC/ETH: 24h change (Binance) · Gold: since previous close (Yahoo gold futures)")
+        "Crypto: 24h change (Binance) · Gold: since previous close (Yahoo gold futures)")
+
+
+@pytest.mark.parametrize("price, change, line", [
+    (1.0, 0.02, "ADA        $1.00     +0.02  (+2.00%)"),        # $1 and up: 2 decimals
+    (0.9999, -0.0004, "ADA      $0.9999   -0.0004  (+2.00%)"),  # under $1: 4 decimals
+])
+def test_prices_under_one_dollar_get_four_decimals(price, change, line):
+    quote = {"name": "ADA", "price": price, "change": change, "pct": 2.0, "note": None}
+    assert format_message([quote], NOW).splitlines()[1] == "<pre>" + line + "</pre>"
 
 
 def test_message_marks_rises_unavailable_and_paxg():
@@ -143,7 +162,7 @@ def test_message_marks_rises_unavailable_and_paxg():
     assert lines[1] == "<pre>BTC  $101,234.50 +1,500.00  (+1.50%)"
     assert lines[2] == "ETH    unavailable"
     assert lines[3] == "GOLD   $3,623.25    +27.11  (+0.75%)</pre>"
-    assert lines[4] == "BTC/ETH: 24h change (Binance) · Gold: 24h change (Binance PAXG)"
+    assert lines[4] == "Crypto: 24h change (Binance) · Gold: 24h change (Binance PAXG)"
 
 
 # ---- sending --------------------------------------------------------------------------------------
