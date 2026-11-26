@@ -138,3 +138,7 @@
   quote rows for USD, JPY, EUR and GBP against the baht (`FX_IDC:USDTHB`, `JPYTHB`, `EURTHB`, `GBPTHB`) with a
   large daily USD to THB chart under them (a new `chart` option in `PRICE_PAGES`; `openChart` and the page
   share `chartWidget()`). `pytest --live` checks its row buttons too.
+- **2026-11-26**: README shortened from 195 to 86 lines, at the user's request: a short feature list, one
+  table for the tabs and one for the market pages, and links to the guides for the details. The three
+  16 Nov screenshots were replaced by nine current ones (`Pic/`: Today, reader, and every market page),
+  taken from a throwaway copy of the app. The Telegram setup steps moved to the developer guide.

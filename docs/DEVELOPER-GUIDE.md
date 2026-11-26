@@ -54,6 +54,14 @@ refetches everything (you lose read/saved marks).
 
 ### Telegram price messages
 
+**Setting it up (optional).** Create a bot with @BotFather and paste its token after
+`TELEGRAM_BOT_TOKEN=` in `.env`. Open the bot and press **Start** (a bot can only message you after you
+message it). For `TELEGRAM_CHAT_ID=`, use **your own user ID**: message @userinfobot, or take the
+`"chat":{"id": ...}` number from `https://api.telegram.org/bot<token>/getUpdates`. It is the same for
+every bot. Not the digits before the colon in the token: that's the bot's own ID, and Telegram can't
+deliver to it. Test it with `py -3.13 -m news --send-prices`. Until both are filled in, nothing is sent.
+One bot can serve several of your apps, since this one only sends.
+
 [`news/telegram.py`](../news/telegram.py) sends BTC, ETH, ADA, OP and gold (price, change, % change) to
 a Telegram chat every day at `SLOTS` = 08:30, 10:30, 12:30, 14:30, 16:30 and 17:30, PC time.
 `PriceNotifier` is a daemon thread started by `__main__` just before uvicorn (never by `create_app`, so
