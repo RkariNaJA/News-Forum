@@ -142,3 +142,7 @@
   table for the tabs and one for the market pages, and links to the guides for the details. The three
   16 Nov screenshots were replaced by nine current ones (`Pic/`: Today, reader, and every market page),
   taken from a throwaway copy of the app. The Telegram setup steps moved to the developer guide.
+- **2026-11-26**: New **Economic Calendar** page, last in the Markets menu, at the user's request:
+  TradingView's free *Economic Calendar* widget (the data of tradingview.com/economic-calendar), all
+  importance levels, 21 countries including Thailand, times in the PC's time zone. Its own `#calendar`
+  section and `mountCalendar()` in `prices.js`; no server change.

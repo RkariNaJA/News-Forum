@@ -2,7 +2,7 @@
 
 > The landing page is [`../README.md`](../README.md). This guide is for whoever runs, edits or
 > debugs the app: setup, internals, every setting, the API, the schema and the caveats. The market
-> pages (BTC ETF, FedWatch, Crypto / Stock Prices, Fear & Greed, Gold TH Price, Currency to THB) are in
+> pages (BTC ETF, FedWatch, Crypto / Stock Prices, Fear & Greed, Gold TH Price, Currency to THB, Economic Calendar) are in
 > [`MARKET-PAGES.md`](MARKET-PAGES.md), and the history of changes in [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
@@ -393,7 +393,7 @@ Georgia and Segoe UI when offline.
 - **No authentication.** That's fine on loopback, with the host-name and same-origin checks (§5). Don't change `HOST` to `0.0.0.0` without adding
   some.
 - Caveats of the market pages (SoSoValue, FedWatch, TradingView's layout) are in
-  [`MARKET-PAGES.md`](MARKET-PAGES.md#7-caveats).
+  [`MARKET-PAGES.md`](MARKET-PAGES.md#8-caveats).
 - The test-count badge in the README is static.
 
 ## 9. Tests

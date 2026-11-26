@@ -396,7 +396,7 @@ function selectTab(view) {
   load();
 }
 
-// The market pages (BTC ETF, FedWatch, Crypto Prices, Stock Prices, Gold TH Price, Currency to THB) are in a drop-down under "Markets" at
+// The market pages (BTC ETF, FedWatch, Crypto Prices, Stock Prices, Gold TH Price, Currency to THB, Economic Calendar) are in a drop-down under "Markets" at
 // the top right. It closes when a page is picked, on a click elsewhere, and on Esc.
 function setMarketsOpen(open) {
   const menu = $("#market-tabs");

@@ -1,12 +1,12 @@
 # News Forum — Market Pages
 
-> The six pages behind the **Markets ▾** menu at the top right: BTC ETF, FedWatch, Crypto Prices (with
-> the Fear & Greed panel), Stock Prices, Gold TH Price and Currency to THB. Everything else (setup, the news side, settings, the API,
+> The seven pages behind the **Markets ▾** menu at the top right: BTC ETF, FedWatch, Crypto Prices (with
+> the Fear & Greed panel), Stock Prices, Gold TH Price, Currency to THB and Economic Calendar. Everything else (setup, the news side, settings, the API,
 > tests) is in the [developer guide](DEVELOPER-GUIDE.md); past changes are in the
 > [changelog](CHANGELOG.md).
 
-All six are entries in `PRICE_PAGES` (`web/prices.js`) and use `view` values the API doesn't have, so
-they hide the story list and toolbar. A page with its own `section` and `mount` (BTC ETF, FedWatch, Gold TH Price) draws
+All seven are entries in `PRICE_PAGES` (`web/prices.js`) and use `view` values the API doesn't have, so
+they hide the story list and toolbar. A page with its own `section` and `mount` (BTC ETF, FedWatch, Gold TH Price, Economic Calendar) draws
 itself; the others embed TradingView's widget in `#prices`.
 
 ---
@@ -14,8 +14,8 @@ itself; the others embed TradingView's widget in `#prices`.
 ## 1. The Markets menu
 
 - **Markets** (`#markets-toggle`, top right, left of Refresh) opens a drop-down (`#market-tabs`,
-  `.market-pop`, absolutely placed under the button, right-aligned) with the six market pages: BTC ETF,
-  FedWatch, Crypto Prices, Stock Prices, Gold TH Price, Currency to THB. `setMarketsOpen` in `app.js` shows or hides it and sets
+  `.market-pop`, absolutely placed under the button, right-aligned) with the seven market pages: BTC ETF,
+  FedWatch, Crypto Prices, Stock Prices, Gold TH Price, Currency to THB, Economic Calendar. `setMarketsOpen` in `app.js` shows or hides it and sets
   `aria-expanded`; picking an item calls `selectTab` and closes it, as do Esc (focus goes back to the
   button) and any click outside `.markets-menu`. `selectTab` sets `aria-pressed` on the item of the open
   page and the class `on` on the button, which turns it dark like a pressed `.btn`. The items carry
@@ -30,7 +30,7 @@ itself; the others embed TradingView's widget in `#prices`.
   supported way. Each page is an entry in `PRICE_PAGES` in `prices.js`: its group name, note text
   and `symbols` as `EXCHANGE:TICKER` names (crypto: Binance USDT pairs; stocks: `NASDAQ:`/`NYSE:`, with spot
   gold `OANDA:XAUUSD` first, then Anthropic `NASDAQ:ANT`, listed 2026-11-19).
-- **Currency to THB** (`view = "currency"`, `#currency-btn`, last in the Markets menu) is the same kind of
+- **Currency to THB** (`view = "currency"`, `#currency-btn`) is the same kind of
   page with four rows: `FX_IDC:USDTHB`, `JPYTHB`, `EURTHB` and `GBPTHB` (TradingView's default feed for
   these pairs, the interbank rate; `OANDA:USDTHB` also exists). The yen is per 1 yen (about 0.2 baht);
   Thai banks quote per 100, which the page's note says. The entry also has `chart: "FX_IDC:USDTHB"`, so
@@ -140,7 +140,23 @@ the curve agreed (Jan 4.135 %, Feb 4.27 %). CME's own page couldn't be fetched t
   put on top, with no spot price or baht rate (shown as dashes). Prices are baht per baht-weight
   (15.244 g) of 96.5 % gold.
 
-## 7. Caveats
+## 7. Economic Calendar
+
+- **Economic Calendar** (`view = "calendar"`, `#calendar-btn`, last in the Markets menu) is a `PRICE_PAGES`
+  entry with its own `section` (`#calendar`) and `mount` (`mountCalendar` in `prices.js`). It embeds
+  TradingView's free *Economic Calendar* widget
+  (`s3.tradingview.com/external-embedding/embed-widget-events.js`), the same data as
+  [tradingview.com/economic-calendar](https://www.tradingview.com/economic-calendar/), in `#calendar-widget`
+  (`.calendar-box`, `min(760px, 80vh)` high; the widget scrolls inside it). No server call and no key.
+- The widget is built with every importance level (`importanceFilter: "-1,0,1"`) and the countries in
+  `CALENDAR_COUNTRIES` (US, euro area, UK, Germany, France, Italy, Japan, China, Korea, India, Indonesia,
+  Thailand, Australia, Canada, Brazil, Mexico, South Africa, Turkey, Saudi Arabia, Russia, Argentina). The
+  viewer can narrow both with the widget's own flag and bars buttons. It opens at the current time (a red
+  line), shows times in the PC's time zone, and counts down to the next release. Its three number columns
+  (actual, forecast, previous) have no headings, so the page's note names them.
+- Like the price widgets it is rebuilt only when the theme changes (`calendarShown`).
+
+## 8. Caveats
 
 - **BTC ETF figures come from SoSoValue, not CoinGlass.** CoinGlass fills its page from a private API.
   SoSoValue's docs don't state the units of `sponsor_fee` and `prem_dsc`; they are ratios (0.0025 =
@@ -162,3 +178,5 @@ the curve agreed (Jan 4.135 %, Feb 4.27 %). CME's own page couldn't be fetched t
   height or header, clicks can land on the wrong row. The chart pop-up's title names the symbol, so this
   shows at once, and `pytest --live` ([developer guide §9](DEVELOPER-GUIDE.md#9-tests)) checks it directly; re-measure and update `QUOTE_ROW` in
   `prices.js`.
+- **The Economic Calendar is TradingView's widget as it is.** Its layout, filters and wording come from
+  TradingView and can change without notice; the page only chooses the countries, importance and theme.

@@ -6,6 +6,7 @@ const PRICE_PAGES = {
   etf: { section: "#etf", mount: () => mountEtf() },                // etf.js
   fedwatch: { section: "#fedwatch", mount: () => mountFedWatch() },  // fedwatch.js
   goldth: { section: "#goldth", mount: () => mountGoldTh() },        // goldth.js
+  calendar: { section: "#calendar", mount: () => mountCalendar() },  // below, TradingView's Economic Calendar
   prices: {
     group: "Crypto",
     link: "https://www.tradingview.com/markets/cryptocurrencies/",
@@ -74,6 +75,27 @@ function mountPrices(view) {
   $("#prices-widget").replaceChildren(box, rowButtons(page));
   $("#prices-chart").hidden = !page.chart;
   $("#prices-chart").replaceChildren(...(page.chart ? [chartWidget(page.chart, theme)] : []));
+}
+
+// ---- Economic Calendar: TradingView's free "Economic Calendar" widget (the same data as
+// https://www.tradingview.com/economic-calendar/). Times show in this PC's time zone. ----
+const CALENDAR_COUNTRIES = "us,eu,gb,de,fr,it,jp,cn,kr,in,id,th,au,ca,br,mx,za,tr,sa,ru,ar";
+let calendarShown = null;   // theme of the widget on screen; it updates by itself
+
+function mountCalendar() {
+  const theme = currentTheme();
+  if (calendarShown === theme) return;
+  calendarShown = theme;
+  const box = el("div", "tradingview-widget-container calendar-widget");
+  const script = document.createElement("script");
+  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-events.js";
+  script.async = true;
+  script.textContent = JSON.stringify({
+    width: "100%", height: "100%", locale: "en", colorTheme: theme, isTransparent: true,
+    importanceFilter: "-1,0,1", countryFilter: CALENDAR_COUNTRIES,
+  });
+  box.append(el("div", "tradingview-widget-container__widget"), script);
+  $("#calendar-widget").replaceChildren(box);
 }
 
 // ---- click a row → day chart pop-up ----

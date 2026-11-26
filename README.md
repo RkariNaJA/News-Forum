@@ -50,6 +50,7 @@ needs no account or paid service.
 | **Stock Prices** | Gold (XAU/USD) and 15 US tech stocks | TradingView |
 | **Gold TH Price** | Thai gold bar and ornament prices and every announcement today | ทองคำราคา.com |
 | **Currency to THB** | USD, JPY, EUR and GBP to Thai baht, with a USD to THB chart | TradingView |
+| **Economic Calendar** | Upcoming economic events and data releases: actual, forecast and previous figures | TradingView |
 
 Click any TradingView price row for its day chart. More in [MARKET-PAGES.md](docs/MARKET-PAGES.md).
 

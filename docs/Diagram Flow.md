@@ -154,7 +154,7 @@ Markets drop-down             Server (news/*.py)                  Source on the 
 ┌───────────────────────┐     ┌──────────────────────────┐        ┌─────────────────────────┐
 │ Crypto / Stock Prices │────▶│ no server call:          │───────▶│ TradingView widgets     │
 │ Currency to THB       │     │ the browser loads it     │        │ (USD JPY EUR GBP to     │
-│                       │     │                          │        │  THB: FX_IDC feed)      │
+│ Economic Calendar     │     │                          │        │  THB: FX_IDC feed)      │
 └───────────────────────┘     └──────────────────────────┘        └─────────────────────────┘
 
 ┌───────────────────────┐     ┌──────────────────────────┐        ┌─────────────────────────┐
