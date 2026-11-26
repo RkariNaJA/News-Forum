@@ -151,8 +151,8 @@ the curve agreed (Jan 4.135 %, Feb 4.27 %). CME's own page couldn't be fetched t
 - The widget is built with every importance level (`importanceFilter: "-1,0,1"`) and the countries in
   `CALENDAR_COUNTRIES` (US, euro area, UK, Germany, France, Italy, Japan, China, Korea, India, Indonesia,
   Thailand, Australia, Canada, Brazil, Mexico, South Africa, Turkey, Saudi Arabia, Russia, Argentina). The
-  viewer can narrow both with the widget's own flag and bars buttons. It opens at the current time (a red
-  line), shows times in the PC's time zone, and counts down to the next release. Its three number columns
+  viewer can narrow both with the widget's own flag and bars buttons. It opens at the current time (a line
+  under the last event out), shows times in the PC's time zone, and counts down to the next release. Its three number columns
   (actual, forecast, previous) have no headings, so the page's note names them.
 - Like the price widgets it is rebuilt only when the theme changes (`calendarShown`).
 

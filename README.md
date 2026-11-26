@@ -62,6 +62,7 @@ Click any TradingView price row for its day chart. More in [MARKET-PAGES.md](doc
 | <img src="Pic/fedwatch.png" alt="FedWatch page: countdown to the next FOMC decision and rate odds" width="440"><br><sub><b>FedWatch</b></sub> | <img src="Pic/crypto-prices.png" alt="Crypto Prices: live price table for 14 coins" width="440"><br><sub><b>Crypto Prices</b></sub> |
 | <img src="Pic/fear-greed.png" alt="Crypto Fear and Greed Index with its 90-day chart" width="440"><br><sub><b>Fear &amp; Greed Index</b> (on Crypto Prices)</sub> | <img src="Pic/stock-prices.png" alt="Stock Prices: gold and US tech stocks" width="440"><br><sub><b>Stock Prices</b></sub> |
 | <img src="Pic/gold-th-price.png" alt="Gold TH Price: Thai gold price cards and today's announcements" width="440"><br><sub><b>Gold TH Price</b></sub> | <img src="Pic/currency-to-thb.png" alt="Currency to THB: four rates and a USD to THB chart" width="440"><br><sub><b>Currency to THB</b></sub> |
+| <img src="Pic/economic-calendar.png" alt="Economic Calendar: upcoming economic events with actual, forecast and previous figures" width="440"><br><sub><b>Economic Calendar</b></sub> | |
 
 ## Running it
 

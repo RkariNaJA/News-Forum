@@ -145,4 +145,5 @@
 - **2026-11-26**: New **Economic Calendar** page, last in the Markets menu, at the user's request:
   TradingView's free *Economic Calendar* widget (the data of tradingview.com/economic-calendar), all
   importance levels, 21 countries including Thailand, times in the PC's time zone. Its own `#calendar`
-  section and `mountCalendar()` in `prices.js`; no server change.
+  section and `mountCalendar()` in `prices.js`; no server change. Its screenshot
+  (`Pic/economic-calendar.png`) is in the README.
