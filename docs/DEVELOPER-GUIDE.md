@@ -394,7 +394,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-104 tests, all offline (plus 5 live ones, below, that a plain run skips):
+200 tests, all offline (plus 33 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -447,6 +447,7 @@ Sample feeds and a sample article page (`article.html`) are in `tests/fixtures/`
 
 ```bat
 py -3.13 -m pytest --live -q tests/test_feeds_live.py        :: every feed, internet only
+py -3.13 -m pytest --live -q tests/test_goldth.py            :: the Thai gold page, internet only
 py -3.13 -m pip install playwright          :: once; test-only, not in requirements.txt
 py -3.13 -m pytest --live -q tests/test_price_rows_live.py
 ```
@@ -459,10 +460,11 @@ it fails all four Guardian feeds. Run it when a source looks wrong.
 [`test_price_rows_live.py`](../tests/test_price_rows_live.py) needs internet (TradingView) and drives
 Microsoft Edge through Playwright, falling back to Playwright's own Chromium if Edge won't start. It
 serves the real page on a free port with an empty feed list and a throwaway database, so it never
-touches `data/news.db` or the running app. Without `--live` the 5 tests show as skipped
+touches `data/news.db` or the running app. Without `--live` the 33 live tests (25 feeds, 7 price-row
+checks, 1 gold page) show as skipped
 (`conftest.py` adds the switch and the `live` marker).
 
-- **Every row button on its own row**: Crypto Prices and Stock Prices, at 1280 px and 390 px wide. For
+- **Every row button on its own row**: Crypto Prices, Stock Prices and Currency to THB, at 1280 px and 390 px wide. For
   each button it reads which widget row is under the button's top, middle and bottom, and fails with
   lines like `Gold (XAU/USD): at y=88 the widget shows 'Anthropic'` and a pointer to `QUOTE_ROW`.
   Checked to fail by moving `QUOTE_ROW.top` from 52 to 70 px.

@@ -18,10 +18,10 @@ What runs where. Everything except the internet sources and Telegram is on your 
 │ Price pages load         │        │  /api/articles       (cards)         │
 │ TradingView widgets HERE │        │  /api/articles/{id}/detail (pop-up)  │
 └──────────────────────────┘        │  /api/feargreed  /api/fedwatch       │
-                                    │  /api/etf            (markets)       │
-                                    └───────────────────┬──────────────────┘
-                                                        │
-              ┌─────────────────────────────┬───────────┴─────────────────┐
+                                    │  /api/etf  /api/goldth  (markets)    │
+                                    └──────────────────┬───────────────────┘
+                                                       │
+              ┌─────────────────────────────┬──────────┴──────────────────┐
               │ SQLite                      │ HTTPS                       │ thread
               ▼                             ▼                             ▼
 ┌──────────────────────────┐  ┌──────────────────────────┐  ┌──────────────────────────┐
@@ -29,10 +29,10 @@ What runs where. Everything except the internet sources and Telegram is on your 
 │ news.db (SQLite):        │  │ 25 RSS feeds (news)      │  │ checks clock every 30 s  │
 │  • stories               │  │ Article pages (pop-up)   │  │ 6 times a day gets       │
 │  • feed status/errors    │  │ alternative.me           │  │ Binance + Yahoo gold     │
-│  • reader cache          │  │ Fed, NY Fed, Yahoo       │  └─────────────┬────────────┘
-│ news-forum.log           │  │ SoSoValue (needs key)    │                │ HTTPS
-│ telegram-sent.txt        │  └──────────────────────────┘                ▼
-│                          │                                ┌──────────────────────────┐
+│  • reader cache          │  │ Fed, NY Fed, Yahoo       │  └────────────┬─────────────┘
+│ news-forum.log           │  │ SoSoValue (needs key)    │               │ HTTPS
+│ telegram-sent.txt        │  │ Thai gold price site     │               ▼
+│                          │  └──────────────────────────┘  ┌──────────────────────────┐
 │ Read at start:           │                                │ Telegram bot             │
 │  feeds.json, .env        │                                │ price message to you     │
 └──────────────────────────┘                                └──────────────────────────┘
@@ -147,13 +147,14 @@ What happens when you click a card.
 
 ## 5. Market pages
 
-Each page under the **Markets** drop-down, the server endpoint it calls, how long the answer is reused, and where the data comes from.
+Each page under the **Markets** drop-down, the server endpoint it calls, how long the answer is reused, and where the data comes from. The Thai gold price site is ทองคำราคา.com.
 
 ```text
 Markets drop-down             Server (news/*.py)                  Source on the internet
 ┌───────────────────────┐     ┌──────────────────────────┐        ┌─────────────────────────┐
 │ Crypto / Stock Prices │────▶│ no server call:          │───────▶│ TradingView widgets     │
-│                       │     │ the browser loads it     │        │                         │
+│ Currency to THB       │     │ the browser loads it     │        │ (USD JPY EUR GBP to     │
+│                       │     │                          │        │  THB: FX_IDC feed)      │
 └───────────────────────┘     └──────────────────────────┘        └─────────────────────────┘
 
 ┌───────────────────────┐     ┌──────────────────────────┐        ┌─────────────────────────┐
@@ -171,6 +172,12 @@ Markets drop-down             Server (news/*.py)                  Source on the 
 │ BTC ETF               │────▶│ /api/etf                 │───────▶│ SoSoValue API           │
 │                       │     │ reused for 30 min        │        │ needs SOSOVALUE_API_KEY │
 │                       │     │                          │        │ in .env                 │
+└───────────────────────┘     └──────────────────────────┘        └─────────────────────────┘
+
+┌───────────────────────┐     ┌──────────────────────────┐        ┌─────────────────────────┐
+│ Gold TH Price         │────▶│ /api/goldth              │───────▶│ Thai gold price site    │
+│                       │     │ reused for 5 min,        │        │ (Gold Traders           │
+│                       │     │ reads the site's HTML    │        │  Association prices)    │
 └───────────────────────┘     └──────────────────────────┘        └─────────────────────────┘
 ```
 

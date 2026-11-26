@@ -181,7 +181,7 @@ To add or remove a source, edit [`feeds.json`](feeds.json) (name, url, and a sec
 | [`web/goldth.js`](web/goldth.js) | The Gold TH Price page: the price cards and today's announcements |
 | [`web/feargreed.js`](web/feargreed.js) | The Fear & Greed panel on Crypto Prices: today's reading, the 0-100 scale and the history chart |
 | [`web/style.css`](web/style.css) | Newspaper look, light and dark palettes |
-| [`tests/`](tests/) | 104 pytest tests run against saved sample feeds and a sample article page, so they pass offline. `pytest --live` adds a browser check of the price-row buttons against TradingView's real widget |
+| [`tests/`](tests/) | 200 pytest tests run against saved sample feeds, a sample article page and a saved copy of the gold price page, so they pass offline. `pytest --live` adds 33 checks against the real sites: every feed, the Thai gold page, and a browser check of the price-row buttons against TradingView's real widget |
 
 ## Documentation
 
