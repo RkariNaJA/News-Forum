@@ -90,7 +90,7 @@ ROW_UNDER_POINT = """([x, y]) => {
 
 
 @pytest.mark.parametrize("width", [1280, 390])
-@pytest.mark.parametrize("view", ["prices", "stocks"])
+@pytest.mark.parametrize("view", ["prices", "stocks", "currency"])
 def test_every_row_button_sits_on_its_own_row(browser, app_url, view, width):
     page, frame, names = open_price_page(browser, app_url, view, width)
     try:

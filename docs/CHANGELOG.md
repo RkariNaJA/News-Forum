@@ -134,3 +134,7 @@
   today's announcements with the spot price and baht rate. The site has no API, so `news/goldth.py` reads
   its home page with `HTMLParser` (no new package), cached 5 minutes; `GET /api/goldth`. 10 new tests
   (one `--live`).
+- **2026-11-26**: New **Currency to THB** page, last in the Markets menu, at the user's request: TradingView's
+  quote rows for USD, JPY, EUR and GBP against the baht (`FX_IDC:USDTHB`, `JPYTHB`, `EURTHB`, `GBPTHB`) with a
+  large daily USD to THB chart under them (a new `chart` option in `PRICE_PAGES`; `openChart` and the page
+  share `chartWidget()`). `pytest --live` checks its row buttons too.

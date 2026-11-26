@@ -2,7 +2,7 @@
 
 > The landing page is [`../README.md`](../README.md). This guide is for whoever runs, edits or
 > debugs the app: setup, internals, every setting, the API, the schema and the caveats. The market
-> pages (BTC ETF, FedWatch, Crypto / Stock Prices, Fear & Greed, Gold TH Price) are in
+> pages (BTC ETF, FedWatch, Crypto / Stock Prices, Fear & Greed, Gold TH Price, Currency to THB) are in
 > [`MARKET-PAGES.md`](MARKET-PAGES.md), and the history of changes in [`CHANGELOG.md`](CHANGELOG.md).
 
 ---

@@ -231,6 +231,7 @@ kbd {
 
 /* ---- price rows → day chart pop-up ---- */
 #prices-widget { position: relative; }
+.price-chart { height: min(520px, 70vh); margin-top: 6px; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
 .quote-rows { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; }
 .quote-row { display: block; width: 100%; border: 0; padding: 0; margin: 0; background: transparent; cursor: pointer; }
 .quote-row:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }

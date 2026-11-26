@@ -1,11 +1,11 @@
 # News Forum — Market Pages
 
-> The five pages behind the **Markets ▾** menu at the top right: BTC ETF, FedWatch, Crypto Prices (with
-> the Fear & Greed panel), Stock Prices and Gold TH Price. Everything else (setup, the news side, settings, the API,
+> The six pages behind the **Markets ▾** menu at the top right: BTC ETF, FedWatch, Crypto Prices (with
+> the Fear & Greed panel), Stock Prices, Gold TH Price and Currency to THB. Everything else (setup, the news side, settings, the API,
 > tests) is in the [developer guide](DEVELOPER-GUIDE.md); past changes are in the
 > [changelog](CHANGELOG.md).
 
-All five are entries in `PRICE_PAGES` (`web/prices.js`) and use `view` values the API doesn't have, so
+All six are entries in `PRICE_PAGES` (`web/prices.js`) and use `view` values the API doesn't have, so
 they hide the story list and toolbar. A page with its own `section` and `mount` (BTC ETF, FedWatch, Gold TH Price) draws
 itself; the others embed TradingView's widget in `#prices`.
 
@@ -14,14 +14,14 @@ itself; the others embed TradingView's widget in `#prices`.
 ## 1. The Markets menu
 
 - **Markets** (`#markets-toggle`, top right, left of Refresh) opens a drop-down (`#market-tabs`,
-  `.market-pop`, absolutely placed under the button, right-aligned) with the five market pages: BTC ETF,
-  FedWatch, Crypto Prices, Stock Prices, Gold TH Price. `setMarketsOpen` in `app.js` shows or hides it and sets
+  `.market-pop`, absolutely placed under the button, right-aligned) with the six market pages: BTC ETF,
+  FedWatch, Crypto Prices, Stock Prices, Gold TH Price, Currency to THB. `setMarketsOpen` in `app.js` shows or hides it and sets
   `aria-expanded`; picking an item calls `selectTab` and closes it, as do Esc (focus goes back to the
   button) and any click outside `.markets-menu`. `selectTab` sets `aria-pressed` on the item of the open
   page and the class `on` on the button, which turns it dark like a pressed `.btn`. The items carry
   `data-view` but sit outside `.tabs`, so `←`/`→` and the number keys still cycle the news tabs only.
 
-## 2. Crypto Prices and Stock Prices
+## 2. Crypto Prices, Stock Prices and Currency to THB
 
 - **Crypto Prices** and **Stock Prices** (`view = "prices"` / `"stocks"`, page-only; the API has no such
   views). Each is an item (`#prices-btn`, `#stocks-btn`) in the **Markets** drop-down (§1). Both hide the list and toolbar and embed TradingView's free
@@ -30,6 +30,14 @@ itself; the others embed TradingView's widget in `#prices`.
   supported way. Each page is an entry in `PRICE_PAGES` in `prices.js`: its group name, note text
   and `symbols` as `EXCHANGE:TICKER` names (crypto: Binance USDT pairs; stocks: `NASDAQ:`/`NYSE:`, with spot
   gold `OANDA:XAUUSD` first, then Anthropic `NASDAQ:ANT`, listed 2026-11-19).
+- **Currency to THB** (`view = "currency"`, `#currency-btn`, last in the Markets menu) is the same kind of
+  page with four rows: `FX_IDC:USDTHB`, `JPYTHB`, `EURTHB` and `GBPTHB` (TradingView's default feed for
+  these pairs, the interbank rate; `OANDA:USDTHB` also exists). The yen is per 1 yen (about 0.2 baht);
+  Thai banks quote per 100, which the page's note says. The entry also has `chart: "FX_IDC:USDTHB"`, so
+  `mountPrices` puts the USD to THB *Advanced Chart*
+  (daily candles, built by `chartWidget()`, the same function the day-chart pop-up uses) in `#prices-chart`
+  under the table. Other pages hide and empty `#prices-chart`. The FX change is since the previous daily
+  close (the widget shows a *Prev* column).
   Check a new symbol on tradingview.com first: `BINANCE:TONUSDT` showed "No data". Stock prices are
   delayed in the free widget (a small **D** after the price). The widget is rebuilt when the page or the
   theme changes, because its colours are fixed at creation. Opening a price page still refreshes the

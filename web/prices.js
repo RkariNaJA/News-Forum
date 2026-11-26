@@ -1,5 +1,6 @@
 // News Forum price pages (Crypto Prices / Stock Prices). Loaded before app.js; uses its $ and el helpers at run time.
-// ---- Crypto Prices / Stock Prices: TradingView's free "Market Quotes" widget (prices only, no chart) ----
+// ---- Crypto Prices / Stock Prices / Currency to THB: TradingView's free "Market Quotes" widget ----
+// A page with `chart` also shows that symbol's Advanced Chart under the table.
 // Each page is picked from the "Markets" drop-down at the top right (index.html). Symbols are TradingView "EXCHANGE:TICKER" names.
 const PRICE_PAGES = {
   etf: { section: "#etf", mount: () => mountEtf() },                // etf.js
@@ -30,6 +31,18 @@ const PRICE_PAGES = {
       ["NASDAQ:ASML", "ASML"], ["NASDAQ:INTC", "Intel"],
     ],
   },
+  currency: {
+    group: "Thai baht",
+    link: "https://www.tradingview.com/symbols/USDTHB/",
+    detail: "in Thai baht for one unit of each currency (FX_IDC: interbank rates, not a bank's buying or selling rates). "
+      + "The yen is per 1 yen; Thai banks quote it per 100 yen, so multiply by 100 to compare. "
+      + "Change is since the previous daily close. The chart below is USD to THB on daily candles; change the interval in its toolbar.",
+    symbols: [
+      ["FX_IDC:USDTHB", "USD to THB (Dollar)"], ["FX_IDC:JPYTHB", "JPY to THB (Yen)"],
+      ["FX_IDC:EURTHB", "EUR to THB (Euro)"], ["FX_IDC:GBPTHB", "GBP to THB (Pound)"],
+    ],
+    chart: "FX_IDC:USDTHB",
+  },
 };
 let pricesShown = null;   // "view/theme" of the widget on screen; it live-updates by itself
 
@@ -59,6 +72,8 @@ function mountPrices(view) {
   });
   box.append(el("div", "tradingview-widget-container__widget"), script);
   $("#prices-widget").replaceChildren(box, rowButtons(page));
+  $("#prices-chart").hidden = !page.chart;
+  $("#prices-chart").replaceChildren(...(page.chart ? [chartWidget(page.chart, theme)] : []));
 }
 
 // ---- click a row → day chart pop-up ----
@@ -85,18 +100,22 @@ function rowButtons(page) {
 function openChart(symbol, name) {
   $("#chart-title").textContent = name;
   $("#chart-symbol").textContent = `${symbol} · Day chart`;
+  $("#chart-box").replaceChildren(chartWidget(symbol, currentTheme()));
+  $("#chart-dialog").showModal();
+}
+
+function chartWidget(symbol, theme) {
   const box = el("div", "tradingview-widget-container chart-widget");
   const script = document.createElement("script");
   script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
   script.async = true;
   script.textContent = JSON.stringify({
-    autosize: true, symbol, interval: "D", timezone: "Etc/UTC", theme: currentTheme(), style: "1",
+    autosize: true, symbol, interval: "D", timezone: "Etc/UTC", theme, style: "1",
     locale: "en", allow_symbol_change: false, hide_side_toolbar: true, save_image: false, calendar: false,
     support_host: "https://www.tradingview.com",
   });
   box.append(el("div", "tradingview-widget-container__widget chart-widget"), script);
-  $("#chart-box").replaceChildren(box);
-  $("#chart-dialog").showModal();
+  return box;
 }
 
 function closeChart() { $("#chart-dialog").close(); }
