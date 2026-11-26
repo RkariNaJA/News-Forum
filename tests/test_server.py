@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, timezone
 
 import pytest
@@ -232,3 +233,38 @@ def test_goldth_endpoint_returns_the_snapshot(tmp_path):
     feeds.write_text(json.dumps({"feeds": []}), encoding="utf-8")
     client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {}, goldth=FakeGold()))
     assert client.get("/api/goldth").json()["latest"]["bar_sell"] == 57750.0
+
+
+def version_client(tmp_path):
+    code = tmp_path / "code"
+    code.mkdir()
+    (code / "a.py").write_text("x = 1\n", encoding="utf-8")
+    old = 1_700_000_000
+    os.utime(code / "a.py", (old, old))
+    feeds = tmp_path / "feeds.json"
+    feeds.write_text(json.dumps({"feeds": []}), encoding="utf-8")
+    return local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {}, code_dir=code)), code
+
+
+def test_version_is_current_while_the_code_is_unchanged(tmp_path):
+    client, _ = version_client(tmp_path)
+    r = client.get("/api/version").json()
+    assert r["stale"] is False and r["started"]
+
+
+def test_version_is_stale_once_a_python_file_is_edited_after_start(tmp_path):
+    client, code = version_client(tmp_path)
+    (code / "a.py").write_text("x = 2\n", encoding="utf-8")   # mtime is now, after the server started
+    assert client.get("/api/version").json()["stale"] is True
+
+
+def test_version_is_stale_once_a_python_file_is_added_after_start(tmp_path):
+    client, code = version_client(tmp_path)
+    (code / "b.py").write_text("y = 1\n", encoding="utf-8")
+    assert client.get("/api/version").json()["stale"] is True
+
+
+def test_version_ignores_files_that_are_not_python(tmp_path):
+    client, code = version_client(tmp_path)
+    (code / "notes.txt").write_text("hi\n", encoding="utf-8")
+    assert client.get("/api/version").json()["stale"] is False

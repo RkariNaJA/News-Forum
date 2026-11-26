@@ -24,6 +24,12 @@ from .reader import ReaderError, read_article, same_text
 from .store import Store, keep_cutoff
 
 VIEWS = ("today", "saved") + config.CATEGORIES
+CODE_DIR = Path(__file__).resolve().parent   # the news package: editing its .py files needs a restart
+
+
+def code_stamp(code_dir: Path) -> tuple:
+    """Name and modification time of every .py file in code_dir: changes when one is edited, added or removed."""
+    return tuple(sorted((f.name, f.stat().st_mtime_ns) for f in code_dir.glob("*.py")))
 
 
 class FlagBody(BaseModel):
@@ -38,8 +44,10 @@ def create_app(feeds_path: Path, db_path: Path,
                fetcher: Callable[[list[dict]], dict] = fetch_all,
                reader: Callable[[str], dict] = read_article, fedwatch: FedWatch | None = None,
                feargreed: FearGreed | None = None, etf: BtcEtf | None = None,
-               goldth: GoldTh | None = None) -> FastAPI:
+               goldth: GoldTh | None = None, code_dir: Path = CODE_DIR) -> FastAPI:
     app = FastAPI(title="News Forum")
+    started = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    started_stamp = code_stamp(code_dir)
     store = Store(db_path)
     fedwatch = fedwatch or FedWatch()
     feargreed = feargreed or FearGreed()
@@ -176,6 +184,12 @@ def create_app(feeds_path: Path, db_path: Path,
     def gold_th():
         """Thai gold prices: the Gold Traders Association's latest announcement and today's rounds."""
         return goldth.snapshot()
+
+    @app.get("/api/version")
+    def version():
+        """stale = the Python code on disk changed after this server started, so it should be restarted.
+        The page files are read from disk on every load; the Python code only at start."""
+        return {"started": started, "stale": code_stamp(code_dir) != started_stamp}
 
     @app.get("/")
     def index():

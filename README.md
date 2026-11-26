@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
   <img src="https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black" alt="Vanilla JavaScript">
   <img src="https://img.shields.io/badge/RSS-25%20feeds-FFA500?logo=rss&logoColor=white" alt="RSS: 25 feeds">
-  <img src="https://img.shields.io/badge/tests-200%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 200 passing">
+  <img src="https://img.shields.io/badge/tests-214%20passing-2EA44F?logo=pytest&logoColor=white" alt="tests: 214 passing">
   <img src="https://img.shields.io/badge/runs-localhost%20only-555555" alt="runs on localhost only">
 </p>
 

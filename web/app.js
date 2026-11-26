@@ -396,7 +396,7 @@ function selectTab(view) {
   load();
 }
 
-// The market pages (BTC ETF, FedWatch, Crypto Prices, Stock Prices, Gold TH Price, Currency to THB, Economic Calendar) are in a drop-down under "Markets" at
+// The market pages (PRICE_PAGES in prices.js) are in a drop-down under "Markets" at
 // the top right. It closes when a page is picked, on a click elsewhere, and on Esc.
 function setMarketsOpen(open) {
   const menu = $("#market-tabs");
@@ -409,6 +409,19 @@ function setMarketsOpen(open) {
 function applyTheme(t) {
   if (t) document.documentElement.dataset.theme = t;
   if (state.view in PRICE_PAGES) mountPrices(state.view);  // the widget has its own light/dark colours
+}
+
+// ---- restart warning: the server runs the Python code it started with, while the page files are read
+// fresh on every load. After a code change the page can be newer than the server (a new page then gets a 404).
+async function checkVersion() {
+  let stale;
+  try {
+    const r = await fetch("/api/version", { cache: "no-store" });
+    if (r.status === 404) stale = true;            // a server from before /api/version existed
+    else if (!r.ok) return;
+    else stale = (await r.json()).stale === true;
+  } catch { return; }                              // server not reachable: other messages cover that
+  $("#restart-alert").hidden = !stale;
 }
 
 function init() {
@@ -465,8 +478,8 @@ function init() {
     await setFlag(readerArticle, "saved", !readerArticle.saved);
     setReaderSave();
   });
-  setInterval(() => { showUpdated(); autoRefreshIfDue(); }, 60000);   // checked each minute, so it catches up after sleep
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) autoRefreshIfDue(); });
+  setInterval(() => { showUpdated(); autoRefreshIfDue(); checkVersion(); }, 60000);   // checked each minute, so it catches up after sleep
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { autoRefreshIfDue(); checkVersion(); } });
   $("#new-bar-show").addEventListener("click", async () => {
     await load();
     $(".tabs").scrollIntoView({ behavior: "smooth" });
@@ -476,6 +489,7 @@ function init() {
   selectTab(["today", "saved", ...Object.keys(PRICE_PAGES), ...Object.keys(CATEGORY_LABEL)].includes(saved) ? saved : "today");
   showUpdated();
   refresh(false); // fetch only sources older than 30 minutes
+  checkVersion();
 }
 
 init();

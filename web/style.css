@@ -123,6 +123,8 @@ code { font-size: 0.9em; }
 .check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
 
 .alert { background: var(--accent-soft); color: var(--ink); border-radius: 6px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
+.restart-alert { border-left: 3px solid var(--accent); }
+.restart-alert a { color: inherit; }
 
 /* ---- article list ---- */
 .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 28px; }

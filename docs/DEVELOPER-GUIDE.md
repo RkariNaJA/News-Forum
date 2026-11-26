@@ -31,11 +31,11 @@ is renamed to `news-forum.log.old` and a new one starts.
 A shortcut named **`News Forum.lnk`** in the Startup folder (`Win+R` → `shell:startup`) starts the
 server at login, with no window and no browser tab:
 
-| Shortcut field | Value |
-|---|---|
-| Target | `…\Python313\pythonw.exe` |
-| Arguments | `-m news --no-browser` |
-| Start in | the `News Forum` folder (required: Python finds the `news` package from here) |
+| Shortcut field | Value                                                                         |
+| -------------- | ----------------------------------------------------------------------------- |
+| Target         | `…\Python313\pythonw.exe`                                                     |
+| Arguments      | `-m news --no-browser`                                                        |
+| Start in       | the `News Forum` folder (required: Python finds the `news` package from here) |
 
 This copies the existing `Outlook Mail Watcher.lnk`. A Startup shortcut is used rather than a
 Task Scheduler job, because scheduled jobs on this machine get sandboxed. Bookmark
@@ -46,8 +46,21 @@ Task Scheduler job, because scheduled jobs on this machine get sandboxed. Bookma
   ```powershell
   Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | ? CommandLine -like '*-m news*' | % { Stop-Process -Id $_.ProcessId }
   ```
+  From Git Bash (for example `!` in Claude Code), wrap it and escape `$_`, or bash replaces it first:
+  ```bash
+  powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='pythonw.exe'\" | ? CommandLine -like '*-m news*' | % { Stop-Process -Id \$_.ProcessId }"
+  ```
+- **Start it again by hand** (hidden, no window): double-click `News Forum.lnk` in `shell:startup`.
+  `Start News Forum.bat` also works, but runs it in a console window that must stay open.
+- **Restart after changing the Python code** (`news/*.py`, e.g. after a `git pull`): stop it as above,
+  then start it again (the shortcut, or sign in again). The server reads its Python code only at start, so
+  until then a new endpoint answers 404; the page notices and shows a _Restart News Forum_ banner (§7).
+  Page files (`web/`) need no restart, only a page reload.
 - **Turn off autostart.** Delete `News Forum.lnk` from `shell:startup`.
 - **Something looks wrong.** Check `data/news-forum.log`.
+
+- The shortcut is in your Windows Startup folder:
+  **C:\Users\chayodom.k\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\News Forum.lnk**
 
 The database `data/news.db` is created on first start. Deleting it is safe: the next page load
 refetches everything (you lose read/saved marks).
@@ -83,7 +96,7 @@ the chat ID is wrong, e.g. the bot's own ID (the digits before the token's colon
 started; `TELEGRAM_BOT_TOKEN in .env looks wrong` means a stray space, quote or character in the token.
 Telegram may hold a request ~33 s before answering `429 Too Many Requests`, so `send` waits
 `SEND_TIMEOUT` (40 s) to show it rather than `Timed out`. From 23 Nov 2026 it answered every call from
-*new* bots this way (tdlib/telegram-bot-api #1105–#1115); bots already in use worked. Fix: reuse one.
+_new_ bots this way (tdlib/telegram-bot-api #1105–#1115); bots already in use worked. Fix: reuse one.
 
 ## 2. How a refresh works
 
@@ -111,7 +124,7 @@ Telegram may hold a request ~33 s before answering `429 Too Many Requests`, so `
      is cut at 320 characters on a word boundary. Entries without a title are dropped.
    - **published**: `published_parsed`, else `updated_parsed`, as UTC, **capped at now** so a feed
      with future dates can't pin itself to the top. If neither exists, the entry gets
-     `now − n × 20 min`, where *n* counts the undated entries so far (see §8). Only the first
+     `now − n × 20 min`, where _n_ counts the undated entries so far (see §8). Only the first
      `UNDATED_MAX` (15) undated entries are kept; the rest are dropped.
    - **image**: first `http(s)` URL from `media:thumbnail`, `media:content` or an `image/*`
      enclosure.
@@ -143,7 +156,7 @@ Clicking a card anywhere except the headline link or its buttons calls `openRead
    reader result.
 3. **Cache first.** `reader_cache` holds one row per article. A success is kept for good (until the
    daily trim removes the article). A failure is kept for `READER_RETRY` (6 h), so a blocked site
-   isn't hit on every click. `?retry=true` (the pop-up's *Try again* link) refetches a cached
+   isn't hit on every click. `?retry=true` (the pop-up's _Try again_ link) refetches a cached
    failure.
 4. On a cache miss, [`reader.read_article`](../news/reader.py) runs:
    - **`check_url`** allows only `http(s)` addresses that aren't local. It refuses `localhost`,
@@ -203,12 +216,12 @@ before the check existed.
 
 Coverage measured on 54 recent stories (3 per source) on 2026-11-16: **39 full text**.
 
-| Result | Sources |
-|---|---|
-| ✅ Full text (3/3) | BBC World, BBC Asia, BBC Science, Bangkok Post, CNA, CNBC, DW, NPR, Nikkei Asia, The Guardian, The Verge |
-| ⚠️ Mostly | Al Jazeera (2/3), BBC Tech (2/3: one item was an iPlayer TV episode), Guardian Business (2/3: one reader call-out form) |
-| ❌ Videos | BBC Business (the 3 newest were `/news/videos/` pages; its articles extract fine) |
-| ❌ Site refuses | France 24 (403), The Diplomat (403), Ars Technica (405; its feed carries ~950 characters, which the fallback shows) |
+| Result             | Sources                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| ✅ Full text (3/3) | BBC World, BBC Asia, BBC Science, Bangkok Post, CNA, CNBC, DW, NPR, Nikkei Asia, The Guardian, The Verge                |
+| ⚠️ Mostly          | Al Jazeera (2/3), BBC Tech (2/3: one item was an iPlayer TV episode), Guardian Business (2/3: one reader call-out form) |
+| ❌ Videos          | BBC Business (the 3 newest were `/news/videos/` pages; its articles extract fine)                                       |
+| ❌ Site refuses    | France 24 (403), The Diplomat (403), Ars Technica (405; its feed carries ~950 characters, which the fallback shows)     |
 
 The Crypto & Investing feeds were chosen with the same check: CoinDesk, Cointelegraph, Decrypt, CNBC Markets, CNBC
 Investing and Guardian Money each gave 3 of 3 full stories. Rejected because their article pages refuse:
@@ -219,12 +232,12 @@ On 2026-11-20 the Tech & Science feeds above (BBC Tech, Ars Technica, The Verge,
 replaced by AI-only feeds, measured the same way (3 newest stories each, with the app's own fetcher and
 reader):
 
-| Result | AI sources |
-|---|---|
-| ✅ In use | Wired AI (3/3), The Verge AI (3/3, short pieces), MIT Tech Review AI (3/3; one was a 500-character "Research Reports" page), The Decoder (3/3, 4,500–5,600 characters), Guardian AI (2/3: one live blog, rejected as a list page) |
-| ✅ Work, not used | TechCrunch AI (3/3, overlaps The Verge), VentureBeat AI (3/3, enterprise opinion), Hugging Face Blog (3/3, very technical) |
-| ❌ Dropped | Ars Technica AI (0/3: article pages refuse with 405, feed text only 600–1,000 characters); replaced by The Decoder the same day |
-| ❌ Not used | The Register AI (0/3, pages read as link lists), AI News (feed unreadable) |
+| Result            | AI sources                                                                                                                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ In use         | Wired AI (3/3), The Verge AI (3/3, short pieces), MIT Tech Review AI (3/3; one was a 500-character "Research Reports" page), The Decoder (3/3, 4,500–5,600 characters), Guardian AI (2/3: one live blog, rejected as a list page) |
+| ✅ Work, not used | TechCrunch AI (3/3, overlaps The Verge), VentureBeat AI (3/3, enterprise opinion), Hugging Face Blog (3/3, very technical)                                                                                                        |
+| ❌ Dropped        | Ars Technica AI (0/3: article pages refuse with 405, feed text only 600–1,000 characters); replaced by The Decoder the same day                                                                                                   |
+| ❌ Not used       | The Register AI (0/3, pages read as link lists), AI News (feed unreadable)                                                                                                                                                        |
 
 A quick `curl` check had shown TechCrunch (403) and VentureBeat (429) refusing; the app's own client
 reads both fine, so check feeds with `fetch_all`, not `curl`.
@@ -233,35 +246,39 @@ reads both fine, so check feeds with `fetch_all`, not `curl`.
 
 All in [`news/config.py`](../news/config.py) unless noted.
 
-| Setting | Value | Effect |
-|---|---|---|
-| `HOST` / `PORT` | `127.0.0.1` / `8770` | Where uvicorn listens. Loopback only, so the LAN cannot reach it |
-| `ALLOWED_HOSTS` | `127.0.0.1`, `localhost` | Host names the server answers; any other `Host` header gets 400 (blocks DNS rebinding) |
-| `STALE_MINUTES` | `30` | A feed is refetched on page open when its last fetch is older than this |
-| `KEEP_DAYS` | `2` | Calendar days kept, in the PC's time zone: 2 = today and yesterday. Older stories are skipped when fetched, and unsaved ones are deleted on every refresh |
-| `CATEGORIES` | world, business, markets, asia, tech | Allowed `category` values in `feeds.json`; also the tab names. `markets` is shown as *Crypto & Investing* and `tech` as *AI* |
-| `FEEDS_PATH` / `DB_PATH` / `WEB_DIR` | `feeds.json`, `data/news.db`, `web/` | Relative to the project folder |
-| `TTL` / `RETRY_AFTER` (etf.py) | `1800 s` / `120 s` | How long SoSoValue's answer is reused, and how long to wait after a failure. One refresh is 2 calls plus one per fund; SoSoValue allows 20 a minute (`MAX_FUNDS` = 17) |
-| `SOSOVALUE_API_KEY` (`.env`) | none | SoSoValue API key for the BTC ETF page: the environment variable wins, else the `SOSOVALUE_API_KEY=` line of `.env` in the project folder (git-ignored; `read_dotenv` in etf.py, no extra package). Read on every request, so adding it needs no restart |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` (`.env`) | empty | Bot token (from @BotFather) and chat id for the price messages; the environment wins, else `.env`. With either empty nothing is sent. Read at every send, so filling them needs no restart |
-| `SLOTS` / `GRACE_MINUTES` (telegram.py) | 08:30 … 17:30 / `10` | Send times (PC time, every day), and how late a slot may still be sent |
-| `TIMEOUT` (feeds.py) | `20.0` s | Per-request HTTP timeout |
-| `SUMMARY_MAX` (feeds.py) | `320` | Blurb length before truncation |
-| `UNDATED_STEP` (feeds.py) | `20 min` | Spacing for entries with no date |
-| `UNDATED_MAX` (feeds.py) | `15` | Most undated entries taken from one feed per fetch |
-| `FORGET_PRUNED` (store.py) | `14 days` | How long a trimmed link is kept from being stored again |
-| `LIST_LIMIT` (store.py) | `400` | Most articles returned for one tab |
-| `FEED_TEXT_MAX` (feeds.py) | `6000` | Feed text kept for the pop-up fallback |
-| `READER_RETRY` (store.py) | `6 h` | How long a failed article extraction is cached before it is retried |
-| `PAGE_TIMEOUT` / `MAX_PAGE_BYTES` (reader.py) | `20 s` / `5 MB` | Article page download limits |
-| `MIN_TEXT_CHARS` / `MAX_LIST_SHARE` (reader.py) | `400` / `0.6` | Below this, or more list than prose, the page counts as "no story" |
-| `MAX_PARAGRAPHS` / `MAX_TEXT_CHARS` (reader.py) | `80` / `40000` | Most text shown in the pop-up |
-| `MAX_SENTENCES` / `SENTENCES_PER_PICK` (highlights.py) | `3` / `8` | How many sentences are highlighted: one per 8, at most 3 |
+| Setting                                                | Value                                | Effect                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HOST` / `PORT`                                        | `127.0.0.1` / `8770`                 | Where uvicorn listens. Loopback only, so the LAN cannot reach it                                                                                                                                                                                         |
+| `ALLOWED_HOSTS`                                        | `127.0.0.1`, `localhost`             | Host names the server answers; any other `Host` header gets 400 (blocks DNS rebinding)                                                                                                                                                                   |
+| `STALE_MINUTES`                                        | `30`                                 | A feed is refetched on page open when its last fetch is older than this                                                                                                                                                                                  |
+| `KEEP_DAYS`                                            | `2`                                  | Calendar days kept, in the PC's time zone: 2 = today and yesterday. Older stories are skipped when fetched, and unsaved ones are deleted on every refresh                                                                                                |
+| `CATEGORIES`                                           | world, business, markets, asia, tech | Allowed `category` values in `feeds.json`; also the tab names. `markets` is shown as _Crypto & Investing_ and `tech` as _AI_                                                                                                                             |
+| `FEEDS_PATH` / `DB_PATH` / `WEB_DIR`                   | `feeds.json`, `data/news.db`, `web/` | Relative to the project folder                                                                                                                                                                                                                           |
+| `TTL` / `RETRY_AFTER` (etf.py)                         | `1800 s` / `120 s`                   | How long SoSoValue's answer is reused, and how long to wait after a failure. One refresh is 2 calls plus one per fund; SoSoValue allows 20 a minute (`MAX_FUNDS` = 17)                                                                                   |
+| `SOSOVALUE_API_KEY` (`.env`)                           | none                                 | SoSoValue API key for the BTC ETF page: the environment variable wins, else the `SOSOVALUE_API_KEY=` line of `.env` in the project folder (git-ignored; `read_dotenv` in etf.py, no extra package). Read on every request, so adding it needs no restart |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` (`.env`)     | empty                                | Bot token (from @BotFather) and chat id for the price messages; the environment wins, else `.env`. With either empty nothing is sent. Read at every send, so filling them needs no restart                                                               |
+| `SLOTS` / `GRACE_MINUTES` (telegram.py)                | 08:30 … 17:30 / `10`                 | Send times (PC time, every day), and how late a slot may still be sent                                                                                                                                                                                   |
+| `TIMEOUT` (feeds.py)                                   | `20.0` s                             | Per-request HTTP timeout                                                                                                                                                                                                                                 |
+| `SUMMARY_MAX` (feeds.py)                               | `320`                                | Blurb length before truncation                                                                                                                                                                                                                           |
+| `UNDATED_STEP` (feeds.py)                              | `20 min`                             | Spacing for entries with no date                                                                                                                                                                                                                         |
+| `UNDATED_MAX` (feeds.py)                               | `15`                                 | Most undated entries taken from one feed per fetch                                                                                                                                                                                                       |
+| `FORGET_PRUNED` (store.py)                             | `14 days`                            | How long a trimmed link is kept from being stored again                                                                                                                                                                                                  |
+| `LIST_LIMIT` (store.py)                                | `400`                                | Most articles returned for one tab                                                                                                                                                                                                                       |
+| `FEED_TEXT_MAX` (feeds.py)                             | `6000`                               | Feed text kept for the pop-up fallback                                                                                                                                                                                                                   |
+| `READER_RETRY` (store.py)                              | `6 h`                                | How long a failed article extraction is cached before it is retried                                                                                                                                                                                      |
+| `PAGE_TIMEOUT` / `MAX_PAGE_BYTES` (reader.py)          | `20 s` / `5 MB`                      | Article page download limits                                                                                                                                                                                                                             |
+| `MIN_TEXT_CHARS` / `MAX_LIST_SHARE` (reader.py)        | `400` / `0.6`                        | Below this, or more list than prose, the page counts as "no story"                                                                                                                                                                                       |
+| `MAX_PARAGRAPHS` / `MAX_TEXT_CHARS` (reader.py)        | `80` / `40000`                       | Most text shown in the pop-up                                                                                                                                                                                                                            |
+| `MAX_SENTENCES` / `SENTENCES_PER_PICK` (highlights.py) | `3` / `8`                            | How many sentences are highlighted: one per 8, at most 3                                                                                                                                                                                                 |
 
 ### `feeds.json`
 
 ```json
-{"name": "BBC World", "category": "world", "url": "https://feeds.bbci.co.uk/news/world/rss.xml"}
+{
+  "name": "BBC World",
+  "category": "world",
+  "url": "https://feeds.bbci.co.uk/news/world/rss.xml"
+}
 ```
 
 `load_feeds` silently skips an entry with a missing name, a category not in `CATEGORIES`, or a URL
@@ -269,21 +286,22 @@ that isn't `http(s)`. Names must be unique: they key the status table, and a tes
 
 ## 5. API
 
-| Method & path | Body / query | Returns |
-|---|---|---|
-| `POST /api/refresh` | `?force=true\|false` | `{busy, fetched, new, pruned, errors: {name: message}}` |
-| `GET /api/articles` | `?view=today\|world\|business\|markets\|asia\|tech\|saved&q=` (q ≤ 100 chars) | `{view, articles: [...], counts: {tab: unread}}`; an unknown view gives 400 |
-| `POST /api/articles/{id}/read` | `{"value": bool}` | `{ok, counts}`, or 404 for an unknown id |
-| `POST /api/articles/{id}/saved` | `{"value": bool}` | `{ok, counts}`, or 404 for an unknown id |
-| `GET /api/articles/{id}/detail` | `?retry=true` refetches a cached failure | `{article: {...all fields, tags: [...]}, feed_text: [paragraphs], reader: {ok: true, paragraphs, author, date, image} or {ok: false, error}, highlights: [sentences]}`; 404 for an unknown id |
-| `POST /api/articles/read-all` | `{"ids": [int, ...]}` (≤ 1000) | `{updated, counts}` |
-| `GET /api/counts` | | `{tab: unread}`: the tab badges on their own, without the stories |
-| `GET /api/fedwatch` | | `{next: {date, label, sep, decision}, upcoming: [...], target: {low, high, effr, as_of}, odds: {meeting, outcomes: [{move_bp, low, high, prob}], rate_before, rate_after, anchor, contracts: [{symbol, price, time}]}, errors: {name: message}, cme_url}`; a part that failed is `null` and named in `errors` (calendar, rate or futures) |
-| `GET /api/etf` | | `{funds: [{ticker, name, exchange, date, fee, price, prem_dsc, net_inflow, cum_inflow, net_assets, value_traded}], totals: {date, net_inflow, value_traded, net_assets, cum_inflow}, history: [[date, net_inflow], ...], missing: [ticker], as_of, error, needs_key, key_env, env_file, key_url, source_url}`; fee and `prem_dsc` are ratios (0.0025 = 0.25 %), money in US dollars. With no key, `needs_key` is true and nothing is fetched |
-| `GET /api/feargreed` | | `{current: {date, value, label}, history: [[date, value], ...] oldest first, next_update, error, source_url}`; with nothing cached and alternative.me down, `current` is `null` and `error` says why |
-| `GET /api/goldth` | | `{latest: {time, round, bar_buy, bar_sell, ornament_buy, ornament_sell, change_today, change}, rounds: [{time, round, bar_buy, bar_sell, ornament_buy, ornament_sell, spot, thb, change}, ...] newest first, error, source_url}`; baht per baht-weight of 96.5 % gold, times ISO with `+07:00`; with nothing cached and the site down or changed, `latest` is `null` and `error` says why |
-| `GET /api/status` | | `{feeds: [{name, url, category, last_fetch, last_ok, error, last_count}]}` |
-| `GET /` and `/static/*` | | The page and its assets, sent with `Cache-Control: no-cache` so the browser re-checks them (ETag) on every load |
+| Method & path                   | Body / query                                                                  | Returns                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/refresh`             | `?force=true\|false`                                                          | `{busy, fetched, new, pruned, errors: {name: message}}`                                                                                                                                                                                                                                                                                                                                                                                      |
+| `GET /api/articles`             | `?view=today\|world\|business\|markets\|asia\|tech\|saved&q=` (q ≤ 100 chars) | `{view, articles: [...], counts: {tab: unread}}`; an unknown view gives 400                                                                                                                                                                                                                                                                                                                                                                  |
+| `POST /api/articles/{id}/read`  | `{"value": bool}`                                                             | `{ok, counts}`, or 404 for an unknown id                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `POST /api/articles/{id}/saved` | `{"value": bool}`                                                             | `{ok, counts}`, or 404 for an unknown id                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `GET /api/articles/{id}/detail` | `?retry=true` refetches a cached failure                                      | `{article: {...all fields, tags: [...]}, feed_text: [paragraphs], reader: {ok: true, paragraphs, author, date, image} or {ok: false, error}, highlights: [sentences]}`; 404 for an unknown id                                                                                                                                                                                                                                                |
+| `POST /api/articles/read-all`   | `{"ids": [int, ...]}` (≤ 1000)                                                | `{updated, counts}`                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `GET /api/counts`               |                                                                               | `{tab: unread}`: the tab badges on their own, without the stories                                                                                                                                                                                                                                                                                                                                                                            |
+| `GET /api/fedwatch`             |                                                                               | `{next: {date, label, sep, decision}, upcoming: [...], target: {low, high, effr, as_of}, odds: {meeting, outcomes: [{move_bp, low, high, prob}], rate_before, rate_after, anchor, contracts: [{symbol, price, time}]}, errors: {name: message}, cme_url}`; a part that failed is `null` and named in `errors` (calendar, rate or futures)                                                                                                    |
+| `GET /api/etf`                  |                                                                               | `{funds: [{ticker, name, exchange, date, fee, price, prem_dsc, net_inflow, cum_inflow, net_assets, value_traded}], totals: {date, net_inflow, value_traded, net_assets, cum_inflow}, history: [[date, net_inflow], ...], missing: [ticker], as_of, error, needs_key, key_env, env_file, key_url, source_url}`; fee and `prem_dsc` are ratios (0.0025 = 0.25 %), money in US dollars. With no key, `needs_key` is true and nothing is fetched |
+| `GET /api/feargreed`            |                                                                               | `{current: {date, value, label}, history: [[date, value], ...] oldest first, next_update, error, source_url}`; with nothing cached and alternative.me down, `current` is `null` and `error` says why                                                                                                                                                                                                                                         |
+| `GET /api/goldth`               |                                                                               | `{latest: {time, round, bar_buy, bar_sell, ornament_buy, ornament_sell, change_today, change}, rounds: [{time, round, bar_buy, bar_sell, ornament_buy, ornament_sell, spot, thb, change}, ...] newest first, error, source_url}`; baht per baht-weight of 96.5 % gold, times ISO with `+07:00`; with nothing cached and the site down or changed, `latest` is `null` and `error` says why                                                    |
+| `GET /api/version`              |                                                                               | `{started, stale}`: when this server started (UTC), and whether any `news/*.py` file was edited, added or removed since (name and modification time of each); `stale: true` means restart it                                                                                                                                                                                                                                                 |
+| `GET /api/status`               |                                                                               | `{feeds: [{name, url, category, last_fetch, last_ok, error, last_count}]}`                                                                                                                                                                                                                                                                                                                                                                   |
+| `GET /` and `/static/*`         |                                                                               | The page and its assets, sent with `Cache-Control: no-cache` so the browser re-checks them (ETag) on every load                                                                                                                                                                                                                                                                                                                              |
 
 **Same-origin writes.** A `POST` whose `Origin` header doesn't match its `Host` gets 403, so another
 site open in the browser can't save, mark or refresh. Requests with no `Origin` (curl, scripts) pass.
@@ -313,17 +331,21 @@ connection; writes go through a `threading.Lock` because uvicorn handles request
 
 ## 7. Front end
 
-Plain HTML/CSS/JS, no build step, as six classic scripts that share globals, loaded in this order:
+Plain HTML/CSS/JS, no build step, as seven classic scripts that share globals, loaded in this order:
 [`web/etf.js`](../web/etf.js) (the BTC ETF page),
 [`web/fedwatch.js`](../web/fedwatch.js) (the FedWatch page),
 [`web/feargreed.js`](../web/feargreed.js) (the Fear & Greed panel),
+[`web/goldth.js`](../web/goldth.js) (the Gold TH Price page),
 [`web/prices.js`](../web/prices.js) (price pages and the chart pop-up),
 [`web/app.js`](../web/app.js) (everything else) and [`web/keys.js`](../web/keys.js) (keyboard shortcuts).
-`index.html` loads them, and `style.css`, with a version query (`?v=16`). **Raise that number whenever you
+`index.html` loads them, and `style.css`, with a version query (`?v=22`). **Raise that number whenever you
 change a JS or CSS file**, so a browser holding an older copy fetches the new one.
 
 [`web/app.js`](../web/app.js):
 
+- **Restart banner** (`#restart-alert`, `checkVersion`): asks `GET /api/version` at start, every minute and
+  when the tab is shown again. `stale: true`, or a 404 (a server from before that endpoint), shows
+  _Restart News Forum_ above the stories on every tab, linking to §1; no answer at all shows nothing.
 - Inserts feed text only through `textContent`, and only gives `href`/`src` to URLs that parse as
   `http(s)` (`safeUrl`). Links open with `rel="noopener noreferrer"`, and the page sends no
   referrer when loading thumbnails.
@@ -352,7 +374,7 @@ change a JS or CSS file**, so a browser holding an older copy fetches the new on
 - **Feed health.** `checkHealth()` reads `GET /api/status` on load and after every refresh. A feed is a
   problem (`feedProblem`) when its last fetch had an error, or worked but returned no stories. The
   masthead dot (`#health`) reads "● 25 sources OK" in green, or "● n sources down" in red, and opens
-  *Source status*, which lists problem feeds first, tinted, with when they last worked. The tagline's
+  _Source status_, which lists problem feeds first, tinted, with when they last worked. The tagline's
   source count comes from the same call.
 - **Market pages** (the **Markets ▾** menu at the top right: BTC ETF, FedWatch, Crypto Prices with the
   Fear & Greed panel, Stock Prices, and the day-chart pop-up) have their own file:
@@ -360,7 +382,7 @@ change a JS or CSS file**, so a browser holding an older copy fetches the new on
 - **Keyboard shortcuts** (`keys.js`, help box on `?` or the footer link): `←`/`→` and `1`–`7` switch
   tabs, `j`/`k` or `↓`/`↑` move between cards, `o` opens the story's site, `s` saves, `m` toggles
   read, `/` focuses search, `r` forces a refresh. In the reader, `j`/`k` go to the next or previous
-  story (with *Hide read* on, `j` skips read stories), `s` saves, `o` opens the site. Keys are ignored
+  story (with _Hide read_ on, `j` skips read stories), `s` saves, `o` opens the site. Keys are ignored
   while typing in a field, with Ctrl/Alt/Meta held, and while another dialog is open. After `s` or `m`
   re-renders the list, focus goes back to the same card, or to the one now in its place.
 
@@ -379,14 +401,14 @@ Georgia and Segoe UI when offline.
   auto-refresh, but the server's refresh lock and `STALE_MINUTES` stop the second from fetching
   again.
 - **Dead feeds.** NHK World's English RSS address returned 404 when this was built, so it is not in
-  the list. The masthead dot turns red when a feed fails; click it (or *Source status* in the footer)
+  the list. The masthead dot turns red when a feed fails; click it (or _Source status_ in the footer)
   to see which.
 - **Thumbnails and fonts are loaded from the publishers and Google**, so those requests do leave
   your PC (the feed fetches do too, obviously). The price pages load TradingView's widget script and
   iframe, and the chart pop-up loads a second one, only while they are open.
 - **The pop-up fetches the publisher's page from your PC**, the same as opening the article.
   Publishers change their layouts, so extraction can start missing on a site and then fall back to
-  the feed text. If one source keeps failing, check it with *Try again*, then look at
+  the feed text. If one source keeps failing, check it with _Try again_, then look at
   `reader.extract`.
 - **Images in the pop-up** come from the page's own share image (`og:image`). Some, such as The
   Guardian's, have the publisher's logo printed on them.
@@ -402,7 +424,7 @@ Georgia and Segoe UI when offline.
 py -3.13 -m pytest -q
 ```
 
-200 tests, all offline (plus 33 live ones, below, that a plain run skips):
+214 tests, all offline (plus 33 live ones, below, that a plain run skips):
 
 - [`test_feeds.py`](../tests/test_feeds.py): RSS and Atom parsing, HTML cleanup, link
   normalisation and unsafe schemes, future and missing dates, truncation, `feeds.json` validation
@@ -413,7 +435,13 @@ py -3.13 -m pytest -q
 - [`test_server.py`](../tests/test_server.py): runs the API with a fake fetcher. Covers refresh and
   errors, skipping fresh feeds, flags, input validation, status, serving the page, and the
   `no-cache` header on the page and its assets (but not on the API), other host names refused, and
-  writes from other sites refused, and read/save replies carrying fresh tab counts.
+  writes from other sites refused, and read/save replies carrying fresh tab counts. `/api/version`: current at start, stale once a `.py` file
+  is edited or added, not for other files.
+- [`test_market_pages_listed.py`](../tests/test_market_pages_listed.py): every page in `PRICE_PAGES` has a
+  Markets menu button (and no extra buttons), and its menu label appears in the Markets button's title,
+  the README's market-pages table and a screenshot caption, `MARKET-PAGES.md` (top note, a `##` heading,
+  the page count in words), the top note of this guide and diagram 5 of `Diagram Flow.md`. A new page
+  whose docs were forgotten fails here, naming each place.
 - [`test_highlights.py`](../tests/test_highlights.py): topic sentences beating filler, exact text in
   reading order, short and empty stories, the headline and restated points not picked, sentence
   splitting around abbreviations and quotes, source-name words ignored, plural grouping.

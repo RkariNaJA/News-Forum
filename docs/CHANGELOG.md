@@ -147,3 +147,9 @@
   importance levels, 21 countries including Thailand, times in the PC's time zone. Its own `#calendar`
   section and `mountCalendar()` in `prices.js`; no server change. Its screenshot
   (`Pic/economic-calendar.png`) is in the README.
+- **2026-11-26**: Two guards, at the user's request. (1) `tests/test_market_pages_listed.py`: a market page
+  missing from the menu, the README (table row, screenshot) or the docs now fails a test that names each
+  place (the docs had been missed twice). (2) A *Restart News Forum* banner: `GET /api/version` says whether
+  `news/*.py` changed since the server started; the page checks it each minute and also treats a 404 as
+  an old server (the Gold TH Price 404 came from an app still running yesterday's code). The developer
+  guide's front-end section also had stale facts fixed (seven scripts, `?v=22`). 14 new tests (214 total).
