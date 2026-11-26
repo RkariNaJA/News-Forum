@@ -17,6 +17,7 @@ from . import config
 from .etf import BtcEtf
 from .feargreed import FearGreed
 from .fedwatch import FedWatch
+from .goldth import GoldTh
 from .feeds import fetch_all, load_feeds
 from .highlights import Corpus, key_sentences
 from .reader import ReaderError, read_article, same_text
@@ -36,12 +37,14 @@ class IdsBody(BaseModel):
 def create_app(feeds_path: Path, db_path: Path,
                fetcher: Callable[[list[dict]], dict] = fetch_all,
                reader: Callable[[str], dict] = read_article, fedwatch: FedWatch | None = None,
-               feargreed: FearGreed | None = None, etf: BtcEtf | None = None) -> FastAPI:
+               feargreed: FearGreed | None = None, etf: BtcEtf | None = None,
+               goldth: GoldTh | None = None) -> FastAPI:
     app = FastAPI(title="News Forum")
     store = Store(db_path)
     fedwatch = fedwatch or FedWatch()
     feargreed = feargreed or FearGreed()
     etf = etf or BtcEtf()
+    goldth = goldth or GoldTh()
     refresh_lock = threading.Lock()
     corpus_cache: dict = {"state": None, "corpus": None}
     corpus_lock = threading.Lock()
@@ -168,6 +171,11 @@ def create_app(feeds_path: Path, db_path: Path,
     def btc_etf():
         """US spot Bitcoin ETFs: each fund's latest figures and the daily totals (SoSoValue, needs a key)."""
         return etf.snapshot()
+
+    @app.get("/api/goldth")
+    def gold_th():
+        """Thai gold prices: the Gold Traders Association's latest announcement and today's rounds."""
+        return goldth.snapshot()
 
     @app.get("/")
     def index():

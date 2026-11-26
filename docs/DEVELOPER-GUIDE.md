@@ -2,7 +2,7 @@
 
 > The landing page is [`../README.md`](../README.md). This guide is for whoever runs, edits or
 > debugs the app: setup, internals, every setting, the API, the schema and the caveats. The market
-> pages (BTC ETF, FedWatch, Crypto / Stock Prices, Fear & Greed) are in
+> pages (BTC ETF, FedWatch, Crypto / Stock Prices, Fear & Greed, Gold TH Price) are in
 > [`MARKET-PAGES.md`](MARKET-PAGES.md), and the history of changes in [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
@@ -273,6 +273,7 @@ that isn't `http(s)`. Names must be unique: they key the status table, and a tes
 | `GET /api/fedwatch` | | `{next: {date, label, sep, decision}, upcoming: [...], target: {low, high, effr, as_of}, odds: {meeting, outcomes: [{move_bp, low, high, prob}], rate_before, rate_after, anchor, contracts: [{symbol, price, time}]}, errors: {name: message}, cme_url}`; a part that failed is `null` and named in `errors` (calendar, rate or futures) |
 | `GET /api/etf` | | `{funds: [{ticker, name, exchange, date, fee, price, prem_dsc, net_inflow, cum_inflow, net_assets, value_traded}], totals: {date, net_inflow, value_traded, net_assets, cum_inflow}, history: [[date, net_inflow], ...], missing: [ticker], as_of, error, needs_key, key_env, env_file, key_url, source_url}`; fee and `prem_dsc` are ratios (0.0025 = 0.25 %), money in US dollars. With no key, `needs_key` is true and nothing is fetched |
 | `GET /api/feargreed` | | `{current: {date, value, label}, history: [[date, value], ...] oldest first, next_update, error, source_url}`; with nothing cached and alternative.me down, `current` is `null` and `error` says why |
+| `GET /api/goldth` | | `{latest: {time, round, bar_buy, bar_sell, ornament_buy, ornament_sell, change_today, change}, rounds: [{time, round, bar_buy, bar_sell, ornament_buy, ornament_sell, spot, thb, change}, ...] newest first, error, source_url}`; baht per baht-weight of 96.5 % gold, times ISO with `+07:00`; with nothing cached and the site down or changed, `latest` is `null` and `error` says why |
 | `GET /api/status` | | `{feeds: [{name, url, category, last_fetch, last_ok, error, last_count}]}` |
 | `GET /` and `/static/*` | | The page and its assets, sent with `Cache-Control: no-cache` so the browser re-checks them (ETag) on every load |
 
@@ -384,7 +385,7 @@ Georgia and Segoe UI when offline.
 - **No authentication.** That's fine on loopback, with the host-name and same-origin checks (§5). Don't change `HOST` to `0.0.0.0` without adding
   some.
 - Caveats of the market pages (SoSoValue, FedWatch, TradingView's layout) are in
-  [`MARKET-PAGES.md`](MARKET-PAGES.md#6-caveats).
+  [`MARKET-PAGES.md`](MARKET-PAGES.md#7-caveats).
 - The test-count badge in the README is static.
 
 ## 9. Tests
@@ -425,6 +426,10 @@ py -3.13 -m pytest -q
   the rate limit (stopping at it, without asking for the rest), a refresh with most funds missing
   failing while the last complete table stays, a changed fund list, the `{code, data}` wrapper, the key from `.env` or the environment,
   no fetch without a key, the 30-minute cache, the wait after a failure, and keeping the last answer.
+- [`test_goldth.py`](../tests/test_goldth.py): the announcement box and today's rounds read from a
+  trimmed copy of ทองคำราคา.com's page (`fixtures/goldth.html`): Thai dates, the arrow giving a change's
+  direction, the newer box round put on top only once, a changed page refused, the 5-minute cache and
+  keeping the last answer. With `--live` it also reads the real page.
 - [`test_telegram.py`](../tests/test_telegram.py): settings needing both values, quotes from faked
   Binance and Yahoo answers, the PAXG fallback, a failed price shown as `unavailable`, the exact
   message, bad numbers (zero, NaN, infinite) falling back or shown as `unavailable`, the token never in
@@ -486,13 +491,14 @@ News Forum/
 │   ├── etf.py               ← BTC ETF page: US spot Bitcoin ETFs (SoSoValue), cached
 │   ├── feargreed.py         ← Crypto Fear & Greed Index (alternative.me), cached
 │   ├── fedwatch.py          ← FedWatch page: FOMC calendar, target range, futures, odds
+│   ├── goldth.py            ← Gold TH Price page: Thai gold prices (ทองคำราคา.com), cached
 │   ├── feeds.py             ← fetch + parse
 │   ├── highlights.py        ← key sentences for the pop-up highlights (TF-IDF, no AI)
 │   ├── reader.py            ← reader view: safe page download + story extraction
 │   ├── store.py             ← SQLite (articles, feed status, reader cache)
 │   ├── telegram.py          ← Telegram price messages (BTC, ETH, ADA, OP, gold)
 │   └── server.py            ← FastAPI routes
-├── web/                     ← index.html, style.css, etf.js, fedwatch.js, feargreed.js, prices.js, app.js, keys.js
+├── web/                     ← index.html, style.css, etf.js, fedwatch.js, feargreed.js, goldth.js, prices.js, app.js, keys.js
 ├── Pic/                     ← README screenshots
 ├── data/                    ← news.db, news-forum.log, telegram-sent.txt; created on first run (git-ignored)
 └── tests/                   ← conftest.py, test_*.py, fixtures/

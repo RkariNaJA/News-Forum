@@ -128,3 +128,9 @@
   shape is checked before it goes into Telegram's URL: a control character used to raise httpx's
   `InvalidURL` (not caught, so `--send-prices` crashed), and `123:a/../x` would have posted to another
   address. Now both read `Failed: TELEGRAM_BOT_TOKEN in .env looks wrong…`. 17 new tests (191 total).
+- **2026-11-26**: New **Gold TH Price** page, last in the Markets menu, at the user's request: Thai gold
+  prices (Gold Traders Association, 96.5 %, baht per baht-weight) from ทองคำราคา.com. Four cards (bar and
+  ornament, sell and buy back), today's change and the change since the last announcement, and a table of
+  today's announcements with the spot price and baht rate. The site has no API, so `news/goldth.py` reads
+  its home page with `HTMLParser` (no new package), cached 5 minutes; `GET /api/goldth`. 10 new tests
+  (one `--live`).

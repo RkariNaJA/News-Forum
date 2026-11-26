@@ -1,12 +1,12 @@
 # News Forum — Market Pages
 
-> The four pages behind the **Markets ▾** menu at the top right: BTC ETF, FedWatch, Crypto Prices (with
-> the Fear & Greed panel) and Stock Prices. Everything else (setup, the news side, settings, the API,
+> The five pages behind the **Markets ▾** menu at the top right: BTC ETF, FedWatch, Crypto Prices (with
+> the Fear & Greed panel), Stock Prices and Gold TH Price. Everything else (setup, the news side, settings, the API,
 > tests) is in the [developer guide](DEVELOPER-GUIDE.md); past changes are in the
 > [changelog](CHANGELOG.md).
 
-All four are entries in `PRICE_PAGES` (`web/prices.js`) and use `view` values the API doesn't have, so
-they hide the story list and toolbar. A page with its own `section` and `mount` (BTC ETF, FedWatch) draws
+All five are entries in `PRICE_PAGES` (`web/prices.js`) and use `view` values the API doesn't have, so
+they hide the story list and toolbar. A page with its own `section` and `mount` (BTC ETF, FedWatch, Gold TH Price) draws
 itself; the others embed TradingView's widget in `#prices`.
 
 ---
@@ -14,8 +14,8 @@ itself; the others embed TradingView's widget in `#prices`.
 ## 1. The Markets menu
 
 - **Markets** (`#markets-toggle`, top right, left of Refresh) opens a drop-down (`#market-tabs`,
-  `.market-pop`, absolutely placed under the button, right-aligned) with the four market pages: BTC ETF,
-  FedWatch, Crypto Prices, Stock Prices. `setMarketsOpen` in `app.js` shows or hides it and sets
+  `.market-pop`, absolutely placed under the button, right-aligned) with the five market pages: BTC ETF,
+  FedWatch, Crypto Prices, Stock Prices, Gold TH Price. `setMarketsOpen` in `app.js` shows or hides it and sets
   `aria-expanded`; picking an item calls `selectTab` and closes it, as do Esc (focus goes back to the
   button) and any click outside `.markets-menu`. `selectTab` sets `aria-pressed` on the item of the open
   page and the class `on` on the button, which turns it dark like a pressed `.btn`. The items carry
@@ -113,7 +113,26 @@ the curve agreed (Jan 4.135 %, Feb 4.27 %). CME's own page couldn't be fetched t
   the biggest inflow and outflow. It redraws when its box resizes. Drawing uses `svg()` from
   `feargreed.js` and the F&G chart's grid, axis and tooltip classes.
 
-## 6. Caveats
+## 6. Gold TH Price
+
+- **Gold TH Price** (`#goldth-btn`, last in the Markets menu) is a `PRICE_PAGES` entry with its own
+  `section` (`#goldth`) and `mount` (`mountGoldTh` in `goldth.js`), like BTC ETF, whose cards
+  (`.etf-stat`) and table (`.etf-table`) it reuses. It reads `GET /api/goldth` (reused for 5 minutes in
+  the page, and re-checked every minute while the page is open, so a new announcement shows within about
+  5 minutes): four cards (bar and ornament, sell and buy back), today's change and the change since the
+  last announcement, and a table of today's announcements, newest first. Up is `--greed-strong` with +,
+  down `--accent` with −. Times are shown in Bangkok time whatever the PC's zone.
+- **Where the prices come from (`news/goldth.py`).** ทองคำราคา.com (`xn--42cah7d0cxcvbbb9x.com`) has no
+  API, so `parse` reads its home page with the standard library's `HTMLParser`: the table inside
+  `div.divgta` is the latest announcement (bar and ornament buy / sell, today's change, the change since
+  the last one, the Thai date, time and round number), and `table.pdtable` lists today's rounds (time,
+  round, bar buy / sell, ornament tax base / sell, gold spot in USD/oz, baht per dollar, change). Changes
+  in the table carry no minus sign; the arrow image (`img-down`) gives the direction. Years are Buddhist
+  era (2569 = 2026). The table is updated a little after the box, so when the box has a newer round it is
+  put on top, with no spot price or baht rate (shown as dashes). Prices are baht per baht-weight
+  (15.244 g) of 96.5 % gold.
+
+## 7. Caveats
 
 - **BTC ETF figures come from SoSoValue, not CoinGlass.** CoinGlass fills its page from a private API.
   SoSoValue's docs don't state the units of `sponsor_fee` and `prem_dsc`; they are ratios (0.0025 =
@@ -127,6 +146,10 @@ the curve agreed (Jan 4.135 %, Feb 4.27 %). CME's own page couldn't be fetched t
   Yahoo quotes and today's EFFR, so they can differ a little from CME's page. Yahoo's chart API is
   unofficial and could change; then the page says the futures are missing and still shows the
   countdown. If the Fed redesigns its calendar page, `parse_calendar` finds no meetings and says so.
+- **Gold TH Price reads a web page, not an API.** If ทองคำราคา.com changes its layout, `parse` raises
+  `GoldThError` ("the page has changed") and the page says so; the last good answer is kept while the
+  server runs. `pytest --live` checks the real page (`test_live_site_still_parses`). The figures are the
+  site's copy of the association's announcements, so they can trail the association by a few minutes.
 - **The price-row buttons assume TradingView's layout.** If TradingView changes the Market Quotes row
   height or header, clicks can land on the wrong row. The chart pop-up's title names the symbol, so this
   shows at once, and `pytest --live` ([developer guide §9](DEVELOPER-GUIDE.md#9-tests)) checks it directly; re-measure and update `QUOTE_ROW` in

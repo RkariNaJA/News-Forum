@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=16">
+  <link rel="stylesheet" href="/static/style.css?v=17">
   <meta name="referrer" content="no-referrer">
 </head>
 <body>
@@ -20,12 +20,13 @@
         <button id="health" class="health" type="button" hidden></button>
         <div class="markets-menu">
           <button id="markets-toggle" class="btn" type="button" aria-expanded="false" aria-controls="market-tabs"
-            title="Market pages: BTC ETF, FedWatch, Crypto Prices, Stock Prices">Markets <span class="chev" aria-hidden="true">▾</span></button>
+            title="Market pages: BTC ETF, FedWatch, Crypto Prices, Stock Prices, Gold TH Price">Markets <span class="chev" aria-hidden="true">▾</span></button>
           <div id="market-tabs" class="market-pop" hidden>
             <button id="etf-btn" type="button" data-view="etf" aria-pressed="false" title="US spot Bitcoin ETFs: flows, net assets and prices">BTC ETF</button>
             <button id="fedwatch-btn" type="button" data-view="fedwatch" aria-pressed="false" title="Countdown to the next FOMC decision and the market's rate odds">FedWatch</button>
             <button id="prices-btn" type="button" data-view="prices" aria-pressed="false" title="Live crypto prices and the Fear &amp; Greed Index">Crypto Prices</button>
             <button id="stocks-btn" type="button" data-view="stocks" aria-pressed="false" title="Live tech stock prices">Stock Prices</button>
+            <button id="goldth-btn" type="button" data-view="goldth" aria-pressed="false" title="Thai gold prices from the Gold Traders Association (ทองคำราคา.com)">Gold TH Price</button>
           </div>
         </div>
         <button id="refresh" class="btn" type="button" title="Fetch the latest news from every source">Refresh</button>
@@ -147,6 +148,30 @@
     <p class="muted prices-note">Data from <a id="etf-source" target="_blank" rel="noopener noreferrer">SoSoValue</a>, refreshed
       every 30 minutes. Inflows are in US dollars; green with + is money in, red with − is money out. Largest fund first.</p>
   </section>
+  <section id="goldth" class="etf goldth" hidden>
+    <div id="gold-status" class="alert" hidden></div>
+    <div id="gold-body" hidden>
+      <p id="gold-when" class="fw-kicker"></p>
+      <div id="gold-totals" class="etf-totals"></div>
+      <ul id="gold-moves" class="fng-compare gold-moves"></ul>
+      <div class="fw-card etf-card">
+        <h3 class="fw-heading">Today's announcements</h3>
+        <p id="gold-rounds-note" class="muted"></p>
+        <div class="etf-scroll">
+          <table class="etf-table">
+            <thead><tr><th>Time</th><th class="num">#</th><th class="num">Bar · buy back</th><th class="num">Bar · sell</th>
+              <th class="num" title="The tax base the shops buy ornaments back from">Ornament · buy back</th><th class="num">Ornament · sell</th>
+              <th class="num" title="World gold price, US dollars per troy ounce">Gold spot</th><th class="num">Baht per $</th>
+              <th class="num">Change</th></tr></thead>
+            <tbody id="gold-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p class="muted prices-note">Gold Traders Association prices from <a id="gold-source" target="_blank" rel="noopener noreferrer">ทองคำราคา.com</a>,
+      checked every 5 minutes: Thai baht for one baht-weight (15.244 g) of 96.5% gold. "Sell" is what a shop charges you,
+      "buy back" what it pays you. Green with + is up, red with − is down. Times are Bangkok time.</p>
+  </section>
   <p id="empty" class="empty" hidden></p>
 
   <footer class="footer">
@@ -211,11 +236,12 @@
     </div>
   </dialog>
 
-  <script src="/static/etf.js?v=16"></script>
-  <script src="/static/fedwatch.js?v=16"></script>
-  <script src="/static/feargreed.js?v=16"></script>
-  <script src="/static/prices.js?v=16"></script>
-  <script src="/static/app.js?v=16"></script>
-  <script src="/static/keys.js?v=16"></script>
+  <script src="/static/etf.js?v=17"></script>
+  <script src="/static/fedwatch.js?v=17"></script>
+  <script src="/static/feargreed.js?v=17"></script>
+  <script src="/static/goldth.js?v=17"></script>
+  <script src="/static/prices.js?v=17"></script>
+  <script src="/static/app.js?v=17"></script>
+  <script src="/static/keys.js?v=17"></script>
 </body>
 </html>

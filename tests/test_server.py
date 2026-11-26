@@ -222,3 +222,13 @@ def test_etf_endpoint_returns_the_snapshot(tmp_path):
     feeds.write_text(json.dumps({"feeds": []}), encoding="utf-8")
     client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {}, etf=FakeEtf()))
     assert client.get("/api/etf").json()["funds"][0]["ticker"] == "IBIT"
+
+
+def test_goldth_endpoint_returns_the_snapshot(tmp_path):
+    class FakeGold:
+        def snapshot(self):
+            return {"latest": {"round": 9, "bar_sell": 57750.0}, "rounds": [], "error": None}
+    feeds = tmp_path / "feeds.json"
+    feeds.write_text(json.dumps({"feeds": []}), encoding="utf-8")
+    client = local_client(create_app(feeds, tmp_path / "news.db", fetcher=lambda t: {}, goldth=FakeGold()))
+    assert client.get("/api/goldth").json()["latest"]["bar_sell"] == 57750.0

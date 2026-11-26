@@ -4,6 +4,7 @@
 const PRICE_PAGES = {
   etf: { section: "#etf", mount: () => mountEtf() },                // etf.js
   fedwatch: { section: "#fedwatch", mount: () => mountFedWatch() },  // fedwatch.js
+  goldth: { section: "#goldth", mount: () => mountGoldTh() },        // goldth.js
   prices: {
     group: "Crypto",
     link: "https://www.tradingview.com/markets/cryptocurrencies/",

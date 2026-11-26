@@ -302,6 +302,10 @@ dialog.chart-dialog[open] { display: flex; flex-direction: column; gap: 10px; }
 .etf-zero { stroke: var(--ink-soft); stroke-width: 1; }
 .etf-hit { fill: transparent; }
 
+/* ---- Gold TH Price page: reuses the BTC ETF cards and table ---- */
+.gold-up { color: var(--greed-strong); } .gold-down { color: var(--accent); }
+.gold-moves { margin: 0 0 14px; }
+
 /* ---- Crypto Fear & Greed Index (Crypto Prices page): red = fear, grey = neutral, green = greed ---- */
 .fng { margin-top: 18px; }
 .fng { --xfear: var(--accent); --fear: color-mix(in srgb, var(--accent) 45%, var(--paper));

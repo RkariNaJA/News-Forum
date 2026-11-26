@@ -73,7 +73,7 @@ function renderEtf() {
     return tr;
   }));
   // SoSoValue sends no premium / discount at times; hide the column rather than show a row of dashes
-  $(".etf-table").classList.toggle("no-prem", d.funds.every((f) => f.prem_dsc === null));
+  $("#etf .etf-table").classList.toggle("no-prem", d.funds.every((f) => f.prem_dsc === null));
   const dates = [...new Set(d.funds.map((f) => f.date).filter(Boolean))].sort();
   $("#etf-date").textContent = dates.length ? `Figures for ${etfDay(dates[dates.length - 1])} (US trading day; flows settle the next day).` : "";
 }
